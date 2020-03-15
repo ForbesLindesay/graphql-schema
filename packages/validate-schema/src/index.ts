@@ -99,7 +99,15 @@ export default function validateSchema(
     );
   }
 
-  return {source: schemaString, schema: parse(schemaString)};
+  if (!options.isFederated) return {source: schemaString, schema: parsedSchema};
+  let rawParsed: DocumentNode | null = null;
+  return {
+    source: schemaString,
+    get schema() {
+      if (rawParsed) return rawParsed;
+      return (rawParsed = parse(schemaString));
+    },
+  };
 }
 
 function formatError(
