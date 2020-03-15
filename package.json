@@ -1,15 +1,13 @@
 {
-  "name": "@forbeslindesay/npm-package-template",
-  "description": "npm-package-template",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "repository": "git@github.com:ForbesLindesay/npm-package-template.git",
-  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
-  "license": "MIT",
+  "name": "@graphql-schema/monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc",
-    "postbuild": "rimraf lib/**/__tests__",
-    "lint": "tslint './src/**/*.{ts,tsx}' -t verbose -p .",
+    "build": "yarn wsrun -e --stages build",
+    "postbuild": "rimraf packages/*/lib/**/__tests__",
+    "lint": "tslint './packages/*/src/**/*.{ts,tsx}' -t verbose -p .",
     "prettier:write": "prettier --ignore-path .gitignore --write './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
     "prettier:check": "prettier --ignore-path .gitignore --list-different './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
     "test": "jest",
@@ -26,7 +24,8 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^25.2.1",
     "tslint": "^6.1.0",
-    "typescript": "^3.8.3"
+    "typescript": "^3.8.3",
+    "wsrun": "^5.2.0"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -45,7 +44,7 @@
     },
     "testEnvironment": "node",
     "testMatch": [
-      "<rootDir>/src/**/__tests__/**/*.test.ts?(x)"
+      "<rootDir>/packages/*/src/**/__tests__/**/*.test.ts?(x)"
     ]
   },
   "husky": {
@@ -54,7 +53,7 @@
     }
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
+    "packages/*/src/**/*.{ts,tsx}": [
       "prettier --write",
       "tslint -t verbose -p ."
     ],

@@ -1,0 +1,6 @@
+typ Contact {
+  name: String!
+}
+typ Query {
+  contacts: [Contact!]!
+}

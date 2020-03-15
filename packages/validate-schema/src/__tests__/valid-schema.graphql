@@ -1,0 +1,17 @@
+scalar TrimmedString
+
+type Contact {
+  name: TrimmedString!
+}
+
+input ContactInput {
+  name: TrimmedString!
+}
+
+type Query {
+  contacts: [Contact!]!
+}
+
+type Mutation {
+  createContact(contact: ContactInput!): Contact
+}
