@@ -1,6 +1,7 @@
 {
   "name": "@graphql-schema/monorepo",
   "private": true,
+  "@rollingversions/ignore": true,
   "workspaces": [
     "packages/*"
   ],
