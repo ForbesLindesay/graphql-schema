@@ -3,26 +3,33 @@ import {relative} from 'path';
 import {FEDERATION_SPEC_PREFIX} from '@graphql-schema/federation-spec';
 import GraphQLError from '@graphql-schema/error';
 import {GraphQLError as RawGraphQLError} from 'graphql/error';
-import {parse, DocumentNode} from 'graphql/language';
+import {parse, DocumentNode, DefinitionNode} from 'graphql/language';
 import {validateSDL} from 'graphql/validation/validate';
 import {codeFrameColumns} from '@babel/code-frame';
 import chalk from 'chalk';
+import {buildASTSchema, GraphQLSchema} from 'graphql';
 
-export interface Options {
+export interface ValidateSchemaOptions {
   isFederated?: boolean;
   filename?: string;
 }
 
 export {GraphQLError};
 
+export interface ValidateSchemaResult {
+  source: string;
+  document: DocumentNode;
+  schema: GraphQLSchema;
+}
+
 export function validateSchemaFile(
   filename: string,
-  options: Pick<Options, 'isFederated'> = {},
-): {source: string; schema: DocumentNode} {
+  options: Pick<ValidateSchemaOptions, 'isFederated'> = {},
+): ValidateSchemaResult {
   let schemaString: string;
   try {
     schemaString = readFileSync(filename, 'utf8');
-  } catch (ex) {
+  } catch (ex: any) {
     if (ex.code === 'ENOENT') {
       throw new GraphQLError(
         'ENOENT',
@@ -41,16 +48,12 @@ export function validateSchemaFile(
 }
 export default function validateSchema(
   schemaString: string,
-  options: Options = {},
-): {source: string; schema: DocumentNode} {
+  options: ValidateSchemaOptions = {},
+): ValidateSchemaResult {
   let parsedSchema: DocumentNode;
   try {
-    parsedSchema = parse(
-      options.isFederated
-        ? FEDERATION_SPEC_PREFIX + schemaString
-        : schemaString,
-    );
-  } catch (ex) {
+    parsedSchema = parse(schemaString);
+  } catch (ex: any) {
     throw new GraphQLError(
       'GRAPH_SYNTAX_ERROR',
       (options.filename
@@ -58,32 +61,38 @@ export default function validateSchema(
             options.filename,
           )}${chalk.red(`:`)}\n\n`
         : `${chalk.red(`GraphQL syntax error:`)}\n\n`) +
-        formatError(ex, schemaString, options),
+        formatError(ex, schemaString),
       {...options, source: schemaString, locations: ex.locations},
     );
   }
 
-  if (options.isFederated) {
-    // If we are looking at a federated schema, we may be extending
-    // nodes that are declared in other schemas. We convert these
-    // into ObjectTypeDefinitions before validation
-    parsedSchema = {
-      ...parsedSchema,
-      definitions: parsedSchema.definitions.map((d) => {
-        if (
-          d.kind === 'ObjectTypeExtension' &&
-          !parsedSchema.definitions.some(
-            (d2) => d2.kind === 'ObjectTypeDefinition' && d2.name === d.name,
-          )
-        ) {
-          return {...d, kind: 'ObjectTypeDefinition'};
-        }
-        return d;
-      }),
-    };
-  }
+  // If we are looking at a federated schema, we may be extending
+  // nodes that are declared in other schemas. We convert these
+  // into ObjectTypeDefinitions before validation
+  const schemaToValidate = options.isFederated
+    ? {
+        ...parsedSchema,
+        definitions: [
+          ...parse(FEDERATION_SPEC_PREFIX).definitions,
+          ...parsedSchema.definitions.map(
+            (d): DefinitionNode => {
+              if (
+                d.kind === 'ObjectTypeExtension' &&
+                !parsedSchema.definitions.some(
+                  (d2) =>
+                    d2.kind === 'ObjectTypeDefinition' && d2.name === d.name,
+                )
+              ) {
+                return {...d, kind: 'ObjectTypeDefinition'};
+              }
+              return d;
+            },
+          ),
+        ],
+      }
+    : parsedSchema;
 
-  const errors = validateSDL(parsedSchema);
+  const errors = validateSDL(schemaToValidate);
   if (errors.length) {
     throw new GraphQLError(
       'GRAPH_SCHEMA_ERROR',
@@ -93,27 +102,24 @@ export default function validateSchema(
           )} ${chalk.cyan(options.filename)}${chalk.red(`:`)}\n\n`
         : chalk.red(
             `GraphQL schema ${errors.length > 1 ? 'errors' : 'error'}:\n\n`,
-          )) +
-        errors.map((e) => formatError(e, schemaString, options)).join('\n'),
+          )) + errors.map((e) => formatError(e, schemaString)).join('\n'),
       {...options, source: schemaString, errors},
     );
   }
 
-  if (!options.isFederated) return {source: schemaString, schema: parsedSchema};
-  let rawParsed: DocumentNode | null = null;
   return {
     source: schemaString,
-    get schema() {
-      if (rawParsed) return rawParsed;
-      return (rawParsed = parse(schemaString));
-    },
+    document: parsedSchema,
+    schema: buildASTSchema(parsedSchema, {
+      assumeValid: true,
+      assumeValidSDL: true,
+    }),
   };
 }
 
 function formatError(
   e: RawGraphQLError | {message: string; locations: undefined},
   schemaString: string,
-  {isFederated}: Options,
 ) {
   if (e.locations && e.locations.length === 1) {
     const [loc] = e.locations;
@@ -122,9 +128,7 @@ function formatError(
       '\n\n' +
       codeFrameColumns(schemaString, {
         start: {
-          line:
-            loc.line -
-            (isFederated ? FEDERATION_SPEC_PREFIX.split('\n').length - 1 : 0),
+          line: loc.line,
           column: loc.column,
         },
       }) +

@@ -12,8 +12,7 @@
   "dependencies": {},
   "devDependencies": {
     "@forbeslindesay/tsconfig": "^2.0.0",
-    "@types/node": "^13.9.1",
-    "typescript": "^3.8.3"
+    "@types/node": "^13.9.1"
   },
   "publishConfig": {
     "access": "public"

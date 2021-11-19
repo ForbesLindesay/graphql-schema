@@ -1,5 +1,5 @@
 {
-  "name": "@graphql-schema/federation-spec",
+  "name": "@graphql-schema/typescript-writer",
   "version": "0.0.0",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -9,10 +9,10 @@
   "scripts": {
     "build": "tsc"
   },
-  "dependencies": {},
+  "dependencies": {
+  },
   "devDependencies": {
-    "@forbeslindesay/tsconfig": "^2.0.0",
-    "@types/node": "^13.9.1"
+    "@forbeslindesay/tsconfig": "^2.0.0"
   },
   "publishConfig": {
     "access": "public"

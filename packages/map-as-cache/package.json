@@ -1,5 +1,5 @@
 {
-  "name": "@graphql-schema/federation-spec",
+  "name": "@graphql-schema/map-as-cache",
   "version": "0.0.0",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -10,10 +10,7 @@
     "build": "tsc"
   },
   "dependencies": {},
-  "devDependencies": {
-    "@forbeslindesay/tsconfig": "^2.0.0",
-    "@types/node": "^13.9.1"
-  },
+  "devDependencies": {},
   "publishConfig": {
     "access": "public"
   }

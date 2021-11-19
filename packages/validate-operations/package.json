@@ -1,5 +1,5 @@
 {
-  "name": "@graphql-schema/federation-spec",
+  "name": "@graphql-schema/validate-operations",
   "version": "0.0.0",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -9,10 +9,17 @@
   "scripts": {
     "build": "tsc"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@babel/code-frame": "^7.8.3",
+    "@graphql-schema/error": "0.0.0",
+    "chalk": "^3.0.0",
+    "graphql": "^14.6.0"
+  },
   "devDependencies": {
     "@forbeslindesay/tsconfig": "^2.0.0",
-    "@types/node": "^13.9.1"
+    "@types/babel__code-frame": "^7.0.1",
+    "@types/node": "^13.9.1",
+    "strip-ansi": "^6.0.0"
   },
   "publishConfig": {
     "access": "public"

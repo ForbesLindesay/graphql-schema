@@ -1,0 +1,36 @@
+{
+  "name": "@graphql-schema/cli",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "graphql-schema": "./lib/cli.js"
+  },
+  "repository": "git@github.com:ForbesLindesay/graphql-schema.git",
+  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@graphql-schema/build-typescript-declarations": "^0.0.0",
+    "@graphql-schema/build-typescript-server-types": "^0.0.0",
+    "@graphql-schema/config": "^0.0.0",
+    "@graphql-schema/map-as-cache": "^0.0.0",
+    "@graphql-schema/validate-schema": "^0.0.0",
+    "assert-never": "^1.2.1",
+    "chalk": "^4.1.0",
+    "funtypes": "^4.1.0",
+    "graphql": "^14.6.0",
+    "jsonc-parser": "^3.0.0",
+    "parameter-reducers": "^2.0.0",
+    "sane": "^4.1.0"
+  },
+  "devDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">= 12.19.0"
+  }
+}
