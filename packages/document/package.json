@@ -1,5 +1,5 @@
 {
-  "name": "@graphql-schema/build-typescript-client-types",
+  "name": "@graphql-schema/document",
   "version": "0.0.0",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -10,12 +10,13 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@graphql-schema/build-typescript-declarations": "^0.0.0",
-    "@graphql-schema/document": "^0.0.0",
-    "@graphql-schema/typescript-writer": "^0.0.0",
-    "assert-never": "^1.2.1"
+    "assert-never": "^1.2.1",
+    "graphql": "^14.6.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0",
+    "@types/node": "^13.9.1"
+  },
   "publishConfig": {
     "access": "public"
   }

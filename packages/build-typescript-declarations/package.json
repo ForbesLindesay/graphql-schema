@@ -10,6 +10,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@graphql-schema/document": "^0.0.0",
     "@graphql-schema/typescript-writer": "^0.0.0",
     "assert-never": "^1.2.1",
     "graphql": "^14.6.0"

@@ -1,27 +1,6 @@
+import GraphQlDocument, {types} from '@graphql-schema/document';
 import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
-import {
-  GraphQLArgument,
-  GraphQLEnumType,
-  GraphQLNamedType,
-  GraphQLObjectType,
-  GraphQLOutputType,
-  GraphQLScalarType,
-  GraphQLSchema,
-  GraphQLType,
-  isEnumType,
-  isInputObjectType,
-  isInterfaceType,
-  isNonNullType,
-  isObjectType,
-  isScalarType,
-  isUnionType,
-} from 'graphql';
-import {isBuiltinType, getBuiltinType} from './builtins';
-import getTypeScriptType, {
-  getTypeScriptTypeNotNull,
-} from './graphQLTypeToTypeScript';
-
-export {isBuiltinType, getBuiltinType};
+import getTypeScriptType from './graphQLTypeToTypeScript';
 
 export enum EnumMode {
   StringLiterals = 'STRING_LITERALS',
@@ -127,7 +106,7 @@ export interface FieldTypeOptions {
    *      and you can return `null` or `undefined` to indicate you
    *      do not want to override a given type.
    */
-  readonly getOverride?: (type: GraphQLType) => string | null | undefined;
+  readonly getOverride?: (type: types.TypeNode) => string | null | undefined;
   readonly useReadonlyProps: boolean;
   readonly useReadonlyArrays: boolean;
   readonly allowUndefinedAsNull: boolean;
@@ -135,14 +114,16 @@ export interface FieldTypeOptions {
 }
 
 export function comment(
-  t: {description?: string | null | undefined},
+  t: {description?: types.StringValueNode | undefined},
   prefix: string = '',
 ) {
   const comment =
-    t.description && !t.description.includes(`*/`)
+    t.description?.value && !t.description.value.includes(`*/`)
       ? [
           `/**`,
-          ...t.description.split(`\n`).map((line) => ` * ${line.trimRight()}`),
+          ...t.description.value
+            .split(`\n`)
+            .map((line) => ` * ${line.trimRight()}`),
           ` */`,
         ]
       : [];
@@ -161,7 +142,7 @@ export function comment(
 
 function getField(
   prefix: string,
-  f: {name: string; description?: string | null | undefined; type: GraphQLType},
+  f: types.InputValueDefinitionNode,
   {
     getOverride,
     useReadonlyProps,
@@ -170,215 +151,212 @@ function getField(
     makeNullablePropertiesOptional,
   }: FieldTypeOptions,
 ) {
-  const fieldName = useReadonlyProps ? `readonly ${f.name}` : f.name;
+  const fieldName = useReadonlyProps
+    ? `readonly ${f.name.value}`
+    : f.name.value;
 
-  const markAsOptional =
-    makeNullablePropertiesOptional && !isNonNullType(f.type);
-  const type = markAsOptional
-    ? `?: ${getTypeScriptTypeNotNull(f.type, {
-        getOverride,
-        useReadonlyArrays,
-        allowUndefinedAsNull,
-      })} | null`
-    : `: ${getTypeScriptType(f.type, {
-        getOverride,
-        useReadonlyArrays,
-        allowUndefinedAsNull,
-      })}`;
+  const type =
+    makeNullablePropertiesOptional && f.type.kind === 'NullableType'
+      ? `?: ${getTypeScriptType(f.type.ofType, {
+          getOverride,
+          useReadonlyArrays,
+          allowUndefinedAsNull,
+        })} | null`
+      : `: ${getTypeScriptType(f.type, {
+          getOverride,
+          useReadonlyArrays,
+          allowUndefinedAsNull,
+        })}`;
 
   return comment(f, prefix)`${fieldName}${type};`;
 }
 
-export function buildEnumDeclarations(
-  schema: readonly GraphQLNamedType[],
+export function buildEnumDeclaration(
+  declaration: types.EnumTypeDefinitionNode,
   {
     writer,
     config,
     checkEnumValues,
   }: {
     writer: ITypeScriptWriter;
-    config: EnumConfig | ((e: GraphQLEnumType) => EnumConfig);
+    config: EnumConfig | ((e: types.EnumTypeDefinitionNode) => EnumConfig);
     checkEnumValues?: (options: {
       enumName: string;
       expectedValues: string[];
       importedName: string;
       packageName: string;
-      enumType: GraphQLEnumType;
+      enumType: types.EnumTypeDefinitionNode;
     }) => void;
   },
 ) {
-  for (const t of schema) {
-    if (isEnumType(t)) {
-      const c = typeof config === 'function' ? config(t) : config;
-      if (c.mode === EnumMode.EnumImport) {
-        writer.addImport({
-          localName: t.name,
-          importedName: c.importName ?? t.name,
-          packageName: c.packageName,
-        });
-        if (c.useConst) {
-          writer.addDeclaration([], comment(t)`export type {${t.name}};`);
-        } else {
-          writer.addDeclaration([], comment(t)`export {${t.name}};`);
-        }
-        if (checkEnumValues) {
-          checkEnumValues({
-            enumName: t.name,
-            expectedValues: t.getValues().map((v) => v.name),
-            importedName: c.importName ?? t.name,
-            packageName: c.packageName,
-            enumType: t,
-          });
-        }
-      } else if (c.mode === EnumMode.StringLiterals) {
-        writer.addDeclaration(
-          [t.name],
-          comment(t)`export type ${t.name} =\n${t
-            .getValues()
-            .map((t) => comment(t, `  `)`| ${JSON.stringify(t.name)}`)
-            .join(`\n`)};`,
-        );
-        if (c.generateObjectMapping) {
-          writer.addDeclaration(
-            [],
-            comment(t)`export const ${t.name} = {\n${t
-              .getValues()
-              .map(
-                (t) => comment(t, `  `)`${t.name}: ${JSON.stringify(t.name)},`,
-              )
-              .join(`\n`)}\n} as const;`,
-          );
-        }
-      } else {
-        writer.addDeclaration(
-          [t.name],
-          comment(t)`export${c.useConst ? ` const` : ``} enum ${t.name} {\n${t
-            .getValues()
-            .map(
-              (t) => comment(t, `  `)`${t.name} = ${JSON.stringify(t.name)},`,
-            )
-            .join(`\n`)}\n}`,
-        );
-      }
+  const c = typeof config === 'function' ? config(declaration) : config;
+  if (c.mode === EnumMode.EnumImport) {
+    writer.addImport({
+      localName: declaration.name.value,
+      importedName: c.importName ?? declaration.name.value,
+      packageName: c.packageName,
+    });
+    if (c.useConst) {
+      writer.addDeclaration(
+        [],
+        comment(declaration)`export type {${declaration.name.value}};`,
+      );
+    } else {
+      writer.addDeclaration(
+        [],
+        comment(declaration)`export {${declaration.name.value}};`,
+      );
     }
+    if (checkEnumValues) {
+      checkEnumValues({
+        enumName: declaration.name.value,
+        expectedValues: declaration.values.map((v) => v.name.value),
+        importedName: c.importName ?? declaration.name.value,
+        packageName: c.packageName,
+        enumType: declaration,
+      });
+    }
+  } else if (c.mode === EnumMode.StringLiterals) {
+    writer.addDeclaration(
+      [declaration.name.value],
+      comment(declaration)`export type ${
+        declaration.name.value
+      } =\n${declaration.values
+        .map((t) => comment(t, `  `)`| ${JSON.stringify(t.name.value)}`)
+        .join(`\n`)};`,
+    );
+    if (c.generateObjectMapping) {
+      writer.addDeclaration(
+        [],
+        comment(declaration)`export const ${
+          declaration.name.value
+        } = {\n${declaration.values
+          .map(
+            (t) =>
+              comment(t, `  `)`${t.name.value}: ${JSON.stringify(
+                t.name.value,
+              )},`,
+          )
+          .join(`\n`)}\n} as const;`,
+      );
+    }
+  } else {
+    writer.addDeclaration(
+      [declaration.name.value],
+      comment(declaration)`export${c.useConst ? ` const` : ``} enum ${
+        declaration.name.value
+      } {\n${declaration.values
+        .map(
+          (t) =>
+            comment(t, `  `)`${t.name.value} = ${JSON.stringify(
+              t.name.value,
+            )},`,
+        )
+        .join(`\n`)}\n}`,
+    );
   }
 }
 
-export function buildScalarDeclarations(
-  schema: readonly GraphQLNamedType[],
+export function buildScalarDeclaration(
+  definition: types.ScalarTypeDefinitionNode,
   {
     writer,
     config,
   }: {
     writer: ITypeScriptWriter;
-    config: ScalarConfig | ((s: GraphQLScalarType) => ScalarConfig);
+    config:
+      | ScalarConfig
+      | ((s: types.ScalarTypeDefinitionNode) => ScalarConfig);
   },
 ): void {
-  for (const t of schema) {
-    if (isScalarType(t) && !isBuiltinType(t.name)) {
-      const c = typeof config === 'function' ? config(t) : config;
-      if (c.mode === ScalarMode.InlineType) {
-        writer.addDeclaration(
-          [t.name],
-          comment(t)`export type ${t.name} = ${c.type};`,
-        );
-      } else {
-        writer.addImport({
-          localName: t.name,
-          importedName: c.importName ?? t.name,
-          packageName: c.packageName,
-          asType: true,
-        });
-        writer.addDeclaration([], comment(t)`export type {${t.name}};`);
-      }
-    }
+  const c = typeof config === 'function' ? config(definition) : config;
+  if (c.mode === ScalarMode.InlineType) {
+    writer.addDeclaration(
+      [definition.name.value],
+      comment(definition)`export type ${definition.name.value} = ${c.type};`,
+    );
+  } else {
+    writer.addImport({
+      localName: definition.name.value,
+      importedName: c.importName ?? definition.name.value,
+      packageName: c.packageName,
+      asType: true,
+    });
+    writer.addDeclaration(
+      [],
+      comment(definition)`export type {${definition.name.value}};`,
+    );
   }
 }
 
-export function buildUnionDeclarations(
-  schema: readonly GraphQLNamedType[],
+export function buildUnionDeclaration(
+  declaration: types.UnionTypeDefinitionNode,
   {writer}: {writer: ITypeScriptWriter},
 ): void {
-  for (const t of schema) {
-    if (isUnionType(t)) {
-      writer.addDeclaration(
-        [t.name],
-        comment(t)`export type ${t.name} =\n${t
-          .getTypes()
-          .map((t) => `  | ${t.name}`)
-          .join(`\n`)};`,
-      );
-    }
-  }
+  writer.addDeclaration(
+    [declaration.name.value],
+    comment(declaration)`export type ${
+      declaration.name.value
+    } =\n${declaration.types.map((t) => `  | ${t.value}`).join(`\n`)};`,
+  );
 }
 
-export function buildInterfaceDeclarations(
-  schema: readonly GraphQLNamedType[],
-  {writer}: {writer: ITypeScriptWriter},
+export function buildInterfaceDeclaration(
+  definition: types.InterfaceTypeDefinitionNode,
+  {writer, document}: {writer: ITypeScriptWriter; document: GraphQlDocument},
 ): void {
-  for (const t of schema) {
-    if (isInterfaceType(t)) {
-      // We declare interfaces as Union types because we don't want resolvers
-      // to return objects that are not one of the concrete types that implement
-      // the interface
-      writer.addDeclaration(
-        [t.name],
-        comment(t)`export type ${t.name} =\n${schema
-          .filter(
-            (t) =>
-              isObjectType(t) &&
-              t.getInterfaces().some((i) => i.name === t.name),
-          )
-          .map((t) => `  | ${t.name}`)
-          .join(`\n`)};`,
-      );
-    }
-  }
+  // We declare interfaces as Union types because we don't want resolvers
+  // to return objects that are not one of the concrete types that implement
+  // the interface
+  writer.addDeclaration(
+    [definition.name.value],
+    comment(definition)`export type ${definition.name.value} =\n${document
+      .getInterfaceImplementations(definition)
+      .map((obj) => `  | ${obj.name.value}`)
+      .join(`\n`)};`,
+  );
 }
 
-export function buildInputObjectDeclarations(
-  schema: readonly GraphQLNamedType[],
+export function buildInputObjectDeclaration(
+  definition: types.InputObjectTypeDefinitionNode,
   {writer, config}: {writer: ITypeScriptWriter; config: FieldTypeOptions},
 ): void {
-  for (const t of schema) {
-    if (isInputObjectType(t)) {
-      writer.addDeclaration(
-        [t.name],
-        comment(t)`export interface ${t.name} {\n${Object.values(t.getFields())
-          .map((f) => getField(`  `, f, config))
-          .join(`\n`)}\n}`,
-      );
-    }
-  }
+  writer.addDeclaration(
+    [definition.name.value],
+    comment(definition)`export interface ${
+      definition.name.value
+    } {\n${definition.fields
+      .map((f) => getField(`  `, f, config))
+      .join(`\n`)}\n}`,
+  );
 }
 
-export function buildObjectDeclarations(
-  schema: readonly GraphQLNamedType[],
+export function buildObjectDeclaration(
+  definition: types.ObjectTypeDefinitionNode,
   {
     writer,
-    excludeNames = ['Query', 'Mutation'],
     config,
   }: {
     writer: ITypeScriptWriter;
-    excludeNames?: string[];
-    config: ObjectConfig | ((s: GraphQLObjectType) => ObjectConfig);
+    config:
+      | ObjectConfig
+      | ((s: types.ObjectTypeDefinitionNode) => ObjectConfig);
   },
 ): void {
-  for (const t of schema) {
-    if (isObjectType(t) && !excludeNames.includes(t.name)) {
-      const c = typeof config === 'function' ? config(t) : config;
-      writer.addImport({
-        localName: t.name,
-        importedName: c.importName ?? t.name,
-        packageName: c.packageName,
-      });
-      writer.addDeclaration([], comment(t)`export type {${t.name}};`);
-    }
-  }
+  const c = typeof config === 'function' ? config(definition) : config;
+  writer.addImport({
+    localName: definition.name.value,
+    importedName: c.importName ?? definition.name.value,
+    packageName: c.packageName,
+  });
+  writer.addDeclaration(
+    [],
+    comment(definition)`export type {${definition.name.value}};`,
+  );
 }
 
 export function getOutputType(
-  type: GraphQLOutputType,
+  type: types.TypeNode,
   {
     getOverride,
     allowUndefinedAsNull,
@@ -396,7 +374,7 @@ export function getOutputType(
 }
 
 export function getArgumentsType(
-  args: readonly GraphQLArgument[],
+  args: readonly types.InputValueDefinitionNode[],
   {
     prefix = '',
     useReadonlyProps,
@@ -419,71 +397,4 @@ export function getArgumentsType(
       makeNullablePropertiesOptional,
     }),
   )}\n${prefix}}`;
-}
-
-const namedTypesCache = new WeakMap<
-  GraphQLSchema,
-  readonly GraphQLNamedType[]
->();
-export function getNamedTypes(
-  schema: GraphQLSchema,
-): readonly GraphQLNamedType[] {
-  const cached = namedTypesCache.get(schema);
-  if (cached) return cached;
-  const fresh = schema.toConfig().types.filter((t) => !t.name.startsWith('__'));
-  namedTypesCache.set(schema, fresh);
-  return fresh;
-}
-
-export interface GraphQLResolverObject {
-  readonly name: string;
-  readonly description: string;
-  readonly fields: ReadonlyMap<string, GraphQLResolverField>;
-}
-
-export interface GraphQLResolverField {
-  readonly name: string;
-  readonly description: string;
-  readonly args: readonly GraphQLArgument[];
-  readonly type: GraphQLOutputType;
-}
-
-export function getResolverTypes(
-  schema: readonly GraphQLNamedType[],
-): ReadonlyMap<string, GraphQLResolverObject> {
-  const objects = new Map<string, GraphQLResolverObject>();
-  for (const t of schema) {
-    if (isObjectType(t)) {
-      const seenFields = new Set<string>();
-      const fields = new Map<string, GraphQLResolverField>(
-        [
-          ...Object.values(t.getFields()),
-          ...t
-            .getInterfaces()
-            .map((i) => Object.values(i.getFields()))
-            .reduce((a, b) => [...a, ...b], []),
-        ]
-          .filter((f) => {
-            if (seenFields.has(f.name)) return false;
-            seenFields.add(f.name);
-            return true;
-          })
-          .map((f) => [
-            f.name,
-            {
-              name: f.name,
-              description: f.description ?? ``,
-              args: f.args,
-              type: f.type,
-            },
-          ]),
-      );
-      objects.set(t.name, {
-        name: t.name,
-        description: t.description ?? ``,
-        fields,
-      });
-    }
-  }
-  return objects;
 }

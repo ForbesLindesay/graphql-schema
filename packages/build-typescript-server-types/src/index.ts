@@ -1,13 +1,11 @@
-import type {GraphQLResolverObject} from '@graphql-schema/build-typescript-declarations';
+import GraphQlDocument, {types} from '@graphql-schema/document';
 import {
   comment,
   getArgumentsType,
   getOutputType,
-  isBuiltinType,
   FieldTypeOptions,
 } from '@graphql-schema/build-typescript-declarations';
 import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
-import {GraphQLNamedType, isScalarType} from 'graphql';
 
 export interface ScalarResolversConfig {
   interfaceName?: string;
@@ -16,7 +14,7 @@ export interface ScalarResolversConfig {
 }
 
 export function buildScalarTypesInterface(
-  schema: readonly GraphQLNamedType[],
+  document: GraphQlDocument,
   {
     writer,
     config: {interfaceName = `GraphQLScalarTypes`, useOptionalProps = false},
@@ -27,24 +25,24 @@ export function buildScalarTypesInterface(
 ): void {
   let addedImport = false;
   const scalars = [];
-  for (const t of schema) {
-    if (isScalarType(t) && !isBuiltinType(t.name)) {
-      if (!addedImport) {
-        addedImport = true;
-        writer.addImport({
-          localName: 'ScalarImplementation',
-          importedName: 'ScalarImplementation',
-          packageName: '@graphql-schema/typescript-server',
-        });
-        writer.addDeclaration([], `export type {ScalarImplementation};`);
-      }
-
-      scalars.push(
-        comment(t, `  `)`readonly ${t.name}${
-          useOptionalProps ? `?` : ``
-        }: ScalarImplementation<${t.name}>;`,
-      );
+  for (const t of document.getScalarTypeDefinitions({
+    includeReferencedDocuments: true,
+  })) {
+    if (!addedImport) {
+      addedImport = true;
+      writer.addImport({
+        localName: 'ScalarImplementation',
+        importedName: 'ScalarImplementation',
+        packageName: '@graphql-schema/typescript-server',
+      });
+      writer.addDeclaration([], `export type {ScalarImplementation};`);
     }
+
+    scalars.push(
+      comment(t, `  `)`readonly ${t.name.value}${
+        useOptionalProps ? `?` : ``
+      }: ScalarImplementation<${t.name.value}>;`,
+    );
   }
   writer.addDeclaration(
     [interfaceName],
@@ -53,7 +51,7 @@ export function buildScalarTypesInterface(
 }
 
 export function buildScalarFactory(
-  schema: readonly GraphQLNamedType[],
+  document: GraphQlDocument,
   {
     writer,
     config: {
@@ -71,12 +69,10 @@ export function buildScalarFactory(
     packageName: '@graphql-schema/typescript-server',
   });
   const descriptions = [];
-  for (const t of schema) {
-    if (isScalarType(t) && !isBuiltinType(t.name)) {
-      descriptions.push(
-        `   ${t.name}: ${JSON.stringify(t.description ?? '')},`,
-      );
-    }
+  for (const t of document.getScalarTypeDefinitions({
+    includeReferencedDocuments: true,
+  })) {
+    descriptions.push(`   ${t.name}: ${JSON.stringify(t.description ?? '')},`);
   }
   writer.addDeclaration(
     [methodName],
@@ -93,8 +89,23 @@ export interface ObjectResolversConfig {
   useReadonlyArrays: boolean;
 }
 
+function getArgumentsTypeName(
+  obj: types.ObjectTypeDefinitionNode,
+  field: types.FieldDefinitionNode,
+): string {
+  if (!field.arguments.length) return `unknown`;
+  return `${obj.name.value}_${pascalCase(field.name.value)}_Args`;
+}
+
+function getResultTypeName(
+  obj: types.ObjectTypeDefinitionNode | types.InterfaceTypeDefinitionNode,
+  field: types.FieldDefinitionNode,
+): string {
+  return `${obj.name.value}_${pascalCase(field.name.value)}`;
+}
+
 export function buildArgTypes(
-  schema: ReadonlyMap<string, GraphQLResolverObject>,
+  document: GraphQlDocument,
   {
     writer,
     config: {
@@ -114,18 +125,23 @@ export function buildArgTypes(
     >;
   },
 ): void {
-  for (const [objectName, obj] of schema) {
-    for (const [fieldName, field] of obj.fields) {
-      if (field.args.length) {
-        const interfaceName = `${objectName}_${fieldName}_Args`;
+  for (const obj of document.getObjectTypeDefinitions({
+    includeReferencedDocuments: true,
+  })) {
+    for (const field of obj.fields) {
+      if (field.arguments.length) {
+        const interfaceName = getArgumentsTypeName(obj, field);
         writer.addDeclaration(
           [interfaceName],
-          `export interface ${interfaceName} ${getArgumentsType(field.args, {
-            useReadonlyProps,
-            useReadonlyArrays,
-            allowUndefinedAsNull,
-            makeNullablePropertiesOptional,
-          })}`,
+          `export interface ${interfaceName} ${getArgumentsType(
+            field.arguments,
+            {
+              useReadonlyProps,
+              useReadonlyArrays,
+              allowUndefinedAsNull,
+              makeNullablePropertiesOptional,
+            },
+          )}`,
         );
       }
     }
@@ -133,7 +149,7 @@ export function buildArgTypes(
 }
 
 export function buildResultTypes(
-  schema: ReadonlyMap<string, GraphQLResolverObject>,
+  document: GraphQlDocument,
   {
     writer,
     config,
@@ -145,9 +161,11 @@ export function buildResultTypes(
     >;
   },
 ): void {
-  for (const [objectName, obj] of schema) {
-    for (const [fieldName, field] of obj.fields) {
-      const typeName = `${objectName}_${fieldName}`;
+  for (const obj of document.getObjectTypeDefinitions({
+    includeReferencedDocuments: true,
+  })) {
+    for (const field of obj.fields) {
+      const typeName = getResultTypeName(obj, field);
       writer.addDeclaration(
         [typeName],
         `export type ${typeName} = ${getOutputType(field.type, config)};`,
@@ -157,7 +175,7 @@ export function buildResultTypes(
 }
 
 export function buildResolverTypeDeclarations(
-  schema: ReadonlyMap<string, GraphQLResolverObject>,
+  document: GraphQlDocument,
   {
     writer,
     config: {contextType},
@@ -166,8 +184,10 @@ export function buildResolverTypeDeclarations(
     config: Pick<ObjectResolversConfig, 'contextType'>;
   },
 ): void {
-  for (const [objectName, obj] of schema) {
-    const interfaceName = `${objectName}Resolvers`;
+  for (const obj of document.getObjectTypeDefinitions({
+    includeReferencedDocuments: true,
+  })) {
+    const interfaceName = `${obj.name.value}Resolvers`;
     writer.addImport({
       localName: `GraphQLResolveInfo`,
       importedName: `GraphQLResolveInfo`,
@@ -176,16 +196,20 @@ export function buildResolverTypeDeclarations(
     writer.addDeclaration(
       [interfaceName],
       [
-        `export interface ${objectName}Resolvers {`,
-        ...[...obj.fields].map(
-          ([fieldName, field]) =>
-            `  readonly ${fieldName}: (parent: ${
-              objectName === `Query` || objectName === `Mutation`
+        `export interface ${interfaceName} {`,
+        ...obj.fields.map(
+          (field) =>
+            `  readonly ${field.name.value}: (parent: ${
+              obj.name.value === `Query` || obj.name.value === `Mutation`
                 ? `unknown`
-                : objectName
-            }, args: ${
-              field.args.length ? `${objectName}_${fieldName}_Args` : `unknown`
-            }, ctx: ${contextType}, info: GraphQLResolveInfo) => Promise<${objectName}_${fieldName}> | ${objectName}_${fieldName}`,
+                : obj.name.value
+            }, args: ${getArgumentsTypeName(
+              obj,
+              field,
+            )}, ctx: ${contextType}, info: GraphQLResolveInfo) => Promise<${getResultTypeName(
+              obj,
+              field,
+            )}> | ${getResultTypeName(obj, field)}`,
         ),
         `}`,
       ].join(`\n`),
@@ -196,16 +220,18 @@ export function buildResolverTypeDeclarations(
     [`AllObjectResolvers`],
     [
       `export interface AllObjectResolvers {`,
-      ...[...schema].map(([objectName]) =>
-        [`  readonly ${objectName}: ${objectName}Resolvers;`].join(`\n`),
-      ),
+      ...document
+        .getObjectTypeDefinitions({includeReferencedDocuments: true})
+        .map(
+          (obj) => `  readonly ${obj.name.value}: ${obj.name.value}Resolvers;`,
+        ),
       `}`,
     ].join(`\n`),
   );
 }
 
 export function buildResolverHelpers(
-  schema: ReadonlyMap<string, GraphQLResolverObject>,
+  document: GraphQlDocument,
   {
     writer,
     config: {contextType, helpersName},
@@ -214,7 +240,10 @@ export function buildResolverHelpers(
     config: Pick<ObjectResolversConfig, 'contextType' | 'helpersName'>;
   },
 ) {
-  if (schema.has('Query') || schema.has('Mutation')) {
+  if (
+    document.getObjectTypeDefinition('Query') ||
+    document.getObjectTypeDefinition('Mutation')
+  ) {
     writer.addImport({
       localName: 'getHelpersForRootObject',
       importedName: 'getHelpersForRootObject',
@@ -222,9 +251,11 @@ export function buildResolverHelpers(
     });
   }
   if (
-    [...schema.keys()].some(
-      (objectName) => !(objectName === 'Query' || objectName === 'Mutation'),
-    )
+    document
+      .getObjectTypeDefinitions({includeReferencedDocuments: true})
+      .some(
+        (obj) => !(obj.name.value === 'Query' || obj.name.value === 'Mutation'),
+      )
   ) {
     writer.addImport({
       localName: 'getHelpersForObject',
@@ -236,14 +267,18 @@ export function buildResolverHelpers(
     [helpersName],
     [
       `export const ${helpersName} = {`,
-      ...[...schema.keys()]
-        .sort()
-        .map((objectName) =>
-          objectName === 'Query' || objectName === 'Mutation'
-            ? `  ${objectName}: getHelpersForRootObject<${contextType}, ${objectName}Resolvers>()`
-            : `  ${objectName}: getHelpersForObject<${objectName}, ${contextType}, ${objectName}Resolvers>(),`,
+      ...document
+        .getObjectTypeDefinitions({includeReferencedDocuments: true})
+        .map((obj) =>
+          obj.name.value === 'Query' || obj.name.value === 'Mutation'
+            ? `  ${obj.name.value}: getHelpersForRootObject<${contextType}, ${obj.name.value}Resolvers>()`
+            : `  ${obj.name.value}: getHelpersForObject<${obj.name.value}, ${contextType}, ${obj.name.value}Resolvers>(),`,
         ),
       `} as const;`,
     ].join(`\n`),
   );
+}
+
+function pascalCase(str: string) {
+  return str[0].toUpperCase() + str.substr(1);
 }

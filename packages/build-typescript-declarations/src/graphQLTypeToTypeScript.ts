@@ -1,6 +1,5 @@
-import {GraphQLType, isListType, isNonNullType, isNamedType} from 'graphql';
+import {types} from '@graphql-schema/document';
 import assertNever from 'assert-never';
-import {getBuiltinType, isBuiltinType} from './builtins';
 
 export interface TypeScriptTypeOptions {
   /**
@@ -11,7 +10,7 @@ export interface TypeScriptTypeOptions {
    *      and you can return `null` or `undefined` to indicate you
    *      do not want to override a given type.
    */
-  readonly getOverride?: (type: GraphQLType) => string | null | undefined;
+  readonly getOverride?: (type: types.TypeNode) => string | null | undefined;
 
   /**
    * Should arrays be marked as readonly
@@ -36,52 +35,45 @@ export interface TypeScriptTypeOptions {
 }
 
 export default function getTypeScriptType(
-  t: GraphQLType,
+  t: types.TypeNode,
   options: TypeScriptTypeOptions,
 ): string {
-  if (isNonNullType(t)) {
-    return getTypeScriptTypeNotNull(t.ofType, options);
-  }
-  const notNullType = getTypeScriptTypeNotNull(t, {
-    ...options,
-    requireParentheses: false,
-  });
-  const nullType = options.allowUndefinedAsNull ? `null | undefined` : `null`;
-  return parentheses(`${notNullType} | ${nullType}`, options);
-}
+  const override = options.getOverride?.(t);
+  if (override != undefined) return override;
 
-export function getTypeScriptTypeNotNull(
-  t: GraphQLType,
-  options: TypeScriptTypeOptions,
-): string {
-  if (isNonNullType(t)) {
-    return getTypeScriptTypeNotNull(t.ofType, options);
-  }
-
-  const override = options.getOverride ? options.getOverride(t) : null;
-  if (override) {
-    return override;
-  }
-
-  if (isListType(t)) {
-    const mutableArray = `${getTypeScriptType(t.ofType, {
-      ...options,
-      requireParentheses: true,
-    })}[]`;
-    return options.useReadonlyArrays
-      ? parentheses(`readonly ${mutableArray}`, options)
-      : mutableArray;
-  }
-
-  if (isNamedType(t)) {
-    if (isBuiltinType(t.name)) {
-      return getBuiltinType(t.name);
-    } else {
-      return t.name;
+  switch (t.kind) {
+    case 'NullableType': {
+      const notNullType = getTypeScriptType(t.ofType, {
+        ...options,
+        requireParentheses: false,
+      });
+      const nullType = options.allowUndefinedAsNull
+        ? `null | undefined`
+        : `null`;
+      return parentheses(`${notNullType} | ${nullType}`, options);
     }
+    case 'ListType': {
+      const mutableArray = `${getTypeScriptType(t.ofType, {
+        ...options,
+        requireParentheses: true,
+      })}[]`;
+      return options.useReadonlyArrays
+        ? parentheses(`readonly ${mutableArray}`, options)
+        : mutableArray;
+    }
+    case 'BooleanType':
+      return 'boolean';
+    case 'FloatType':
+    case 'IntType':
+      return 'number';
+    case 'StringType':
+    case 'IdType':
+      return 'string';
+    case 'Name':
+      return t.value;
+    default:
+      return assertNever(t);
   }
-
-  return assertNever(t);
 }
 
 function parentheses(str: string, options: TypeScriptTypeOptions) {
