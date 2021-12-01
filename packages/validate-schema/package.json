@@ -10,10 +10,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@babel/code-frame": "^7.8.3",
-    "@graphql-schema/error": "0.0.0",
+    "@graphql-schema/document": "0.0.0",
     "@graphql-schema/federation-spec": "0.0.0",
-    "chalk": "^3.0.0",
     "graphql": "^14.6.0"
   },
   "devDependencies": {

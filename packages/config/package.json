@@ -13,11 +13,10 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@graphql-schema/error": "^0.0.0",
+    "@graphql-schema/document": "^0.0.0",
     "assert-never": "^1.2.1",
     "chalk": "^4.1.0",
     "funtypes": "^4.1.0",
-    "graphql": "^14.6.0",
     "jsonc-parser": "^3.0.0",
     "parameter-reducers": "^2.0.0",
     "sane": "^4.1.0"

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@graphql-schema/build-typescript-declarations": "^0.0.0",
+    "@graphql-schema/client-types": "^0.0.0",
     "@graphql-schema/document": "^0.0.0",
     "@graphql-schema/typescript-writer": "^0.0.0",
     "assert-never": "^1.2.1"

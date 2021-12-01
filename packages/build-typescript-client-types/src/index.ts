@@ -1,157 +1,294 @@
-import GraphQlDocument, {
-  throwGraphQlError,
-  types,
-} from '@graphql-schema/document';
+import GraphQlDocument, {errors, types} from '@graphql-schema/document';
 import {
-  comment,
-  getArgumentsType,
-  getOutputType,
-  FieldTypeOptions,
-} from '@graphql-schema/build-typescript-declarations';
+  getResultTypeForOperation,
+  getInputTypeForOperation,
+  clientTypes,
+  getResultTypeForFragment,
+} from '@graphql-schema/client-types';
 import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
-import path from 'path';
+import assertNever from 'assert-never';
 
-function getFieldType(
-  type:
-    | types.ObjectTypeDefinitionNode
-    | types.InterfaceTypeDefinitionNode
-    | types.UnionTypeDefinitionNode,
-  field: types.FieldNode,
+function addParentheses(enabled: boolean, str: string) {
+  if (enabled) return `(${str})`;
+  else return str;
+}
+function getClientType<TObject extends {readonly kind: 'ClientObjectType'}>(
+  type: clientTypes.TypeNode<TObject>,
   {
-    getSubType,
-    document,
+    parentheses,
+    nullType,
+    useReadonly,
+    getClientObjectType,
+    getScalarType,
+    getEnumType,
   }: {
-    getSubType: (
-      type:
-        | types.ObjectTypeDefinitionNode
-        | types.InterfaceTypeDefinitionNode
-        | types.UnionTypeDefinitionNode,
-      selectionSet: types.SelectionSetNode,
-    ) => string;
-    document: GraphQlDocument;
+    parentheses: boolean;
+    nullType: string;
+    useReadonly: boolean;
+    getClientObjectType: (type: TObject) => string;
+    getScalarType: (type: clientTypes.ScalarTypeDefinitionNode) => string;
+    getEnumType: (type: clientTypes.EnumTypeDefinitionNode) => string;
   },
 ): string {
-  if (field.name.value === '__typename') {
-    switch (type.kind) {
-      case 'ObjectTypeDefinition':
-        return JSON.stringify(type.name.value);
-      case 'InterfaceTypeDefinition':
-        return document
-          .getInterfaceImplementations(type)
-          .map((t) => JSON.stringify(t.name.value))
-          .join(` | `);
-      case 'UnionTypeDefinition':
-        return type.types.map((name) => JSON.stringify(name.value)).join(` | `);
-    }
-  }
   switch (type.kind) {
-    case 'ObjectTypeDefinition':
-    case 'InterfaceTypeDefinition':
-      const fieldDefinition = type.fields.find(
-        (f) => f.name.value === field.name.value,
+    case 'ClientUnionType':
+      return addParentheses(
+        parentheses,
+        type.types
+          .map((type) =>
+            getClientType(type, {
+              parentheses: false,
+              nullType,
+              useReadonly,
+              getClientObjectType,
+              getScalarType,
+              getEnumType,
+            }),
+          )
+          .join(` | `),
       );
-      if (!fieldDefinition) {
-        return throwGraphQlError(
-          `Cannot find the field "${field.name.value}" on the object "${type.name.value}"`,
-          {node: field},
-        );
-      }
-      return getOutputType(fieldDefinition.type, {
-        allowUndefinedAsNull: false,
-        useReadonlyArrays: true,
-        getOverride(typeName) {
-          if (typeName.kind === 'Name') {
-            const definition = document.getTypeX(typeName);
-            if (
-              definition.kind === 'UnionTypeDefinition' ||
-              definition.kind === 'ObjectTypeDefinition' ||
-              definition.kind === 'InterfaceTypeDefinition'
-            ) {
-              if (!field.selectionSet) {
-                return throwGraphQlError(
-                  `Missing selection set for the field "${field.name.value}" on the object "${type.name.value}"`,
-                  {node: field},
-                );
-              }
-              return getSubType(definition, field.selectionSet);
-            } else if (field.selectionSet) {
-              return throwGraphQlError(
-                `Unexpected selection set for the field "${field.name.value}" on the object "${type.name.value}"`,
-                {node: field},
-              );
-            }
-          }
-          return null;
-        },
-      });
-    case 'UnionTypeDefinition':
-      return throwGraphQlError(
-        `Cannot directly query fields on a Union type "${type.name.value}", you must use a fragment with a type constraint.`,
-        {node: field},
+    case 'ClientTypeNameType':
+      return JSON.stringify(type.name.value);
+    case 'ClientObjectType':
+      return getClientObjectType(type);
+    case 'ClientNullType':
+      return addParentheses(
+        parentheses,
+        `${nullType} | ${getClientType(type.ofType, {
+          parentheses: true,
+          nullType,
+          useReadonly,
+          getClientObjectType,
+          getScalarType,
+          getEnumType,
+        })}`,
       );
+    case 'ClientListType':
+      return addParentheses(
+        parentheses,
+        `${useReadonly ? `readonly ` : ``}${getClientType(type.ofType, {
+          parentheses: true,
+          nullType,
+          useReadonly,
+          getClientObjectType,
+          getScalarType,
+          getEnumType,
+        })}[]`,
+      );
+    case 'BooleanType':
+      return `boolean`;
+    case 'FloatType':
+    case 'IntType':
+      return `number`;
+    case 'IdType':
+    case 'StringType':
+      return `string`;
+    case 'ScalarTypeDefinition':
+      return getScalarType(type);
+    case 'EnumTypeDefinition':
+      return getEnumType(type);
+    default:
+      return assertNever(type);
   }
 }
 
-function getSelectionFieldTypes(
-  type:
-    | types.ObjectTypeDefinitionNode
-    | types.InterfaceTypeDefinitionNode
-    | types.UnionTypeDefinitionNode,
-  selection: types.SelectionNode,
+function buildObjectType(
+  path: readonly string[],
+  type: clientTypes.OutputObjectTypeNode,
   {
-    getTypeName,
-    document,
+    useReadonly,
+    writer,
+    getScalarType,
+    getEnumType,
   }: {
-    getTypeName: (path: readonly string[]) => string;
-    document: GraphQlDocument;
+    useReadonly: boolean;
+    writer: ITypeScriptWriter;
+    getScalarType: (type: clientTypes.ScalarTypeDefinitionNode) => string;
+    getEnumType: (type: clientTypes.EnumTypeDefinitionNode) => string;
   },
-): string[] {
-  switch (selection.kind) {
-    case 'Field':
-      return [`readonly ${selection.name.value}: `];
+): string {
+  const name = path.map((s) => pascalCase(s)).join(`_`);
+  writer.addDeclaration(
+    [name],
+    [
+      `export interface ${name} {`,
+      ...type.fields.map(
+        (f) =>
+          `  ${useReadonly ? `readonly ` : ``}${f.name.value}: ${getClientType(
+            f.type,
+            {
+              parentheses: false,
+              nullType: `null`,
+              useReadonly,
+              getScalarType,
+              getEnumType,
+              getClientObjectType: (type) =>
+                buildObjectType(
+                  [
+                    ...path,
+                    f.name.value,
+                    ...(type.name ? [type.name.value] : []),
+                  ],
+                  type,
+                  {
+                    useReadonly,
+                    writer,
+                    getScalarType,
+                    getEnumType,
+                  },
+                ),
+            },
+          )};`,
+      ),
+      `}`,
+    ].join(`\n`),
+  );
+  return name;
+}
+
+export function buildFragmentType(
+  operation: types.FragmentDefinitionNode,
+  {
+    document,
+    useReadonly,
+    writer,
+    getScalarType,
+    getEnumType,
+  }: {
+    document: GraphQlDocument;
+    useReadonly: boolean;
+    writer: ITypeScriptWriter;
+    getScalarType: (type: clientTypes.ScalarTypeDefinitionNode) => string;
+    getEnumType: (type: clientTypes.EnumTypeDefinitionNode) => string;
+  },
+): void {
+  const operationName = operation.name;
+  const clientType = getResultTypeForFragment(operation, {document});
+  switch (clientType.kind) {
+    case 'ClientUnionType':
+      writer.addDeclaration(
+        [operationName.value],
+        [
+          `export type ${operationName.value} =`,
+          ...clientType.types.map((t) =>
+            buildObjectType(
+              t.name
+                ? [operationName.value, t.name.value]
+                : [operationName.value],
+              t,
+              {
+                useReadonly,
+                writer,
+                getScalarType,
+                getEnumType,
+              },
+            ),
+          ),
+        ].join(`\n`),
+      );
+      break;
+    case 'ClientObjectType':
+      buildObjectType([operationName.value], clientType, {
+        useReadonly,
+        writer,
+        getScalarType,
+        getEnumType,
+      });
+      break;
+    default:
+      return assertNever(clientType);
   }
 }
-function buildSelectionSet(
-  path: readonly string[],
-  selectionSet: types.SelectionSetNode,
+
+export function buildOperationType(
+  operation: types.OperationDefinitionNode,
   {
-    getTypeName,
     document,
+    useReadonlyInputs,
+    useReadonlyOutputs,
     writer,
+    getScalarType,
+    getEnumType,
   }: {
-    getTypeName: (path: readonly string[]) => string;
     document: GraphQlDocument;
+    useReadonlyInputs: boolean;
+    useReadonlyOutputs: boolean;
     writer: ITypeScriptWriter;
+    getScalarType: (type: clientTypes.ScalarTypeDefinitionNode) => string;
+    getEnumType: (type: clientTypes.EnumTypeDefinitionNode) => string;
   },
 ): void {
-  const typeName = getTypeName(path);
+  if (!operation.name) {
+    return errors.throwGraphQlError(
+      `ANONYMOUS_OPERATION`,
+      `Cannot generate type for anonymous operation`,
+      {
+        loc: operation.loc,
+      },
+    );
+  }
+  const inputFields = getInputTypeForOperation(operation, {document});
+  const clientType = getResultTypeForOperation(operation, {document});
+
+  const outputName = pascalCase(operation.name.value);
+  const inputName = `${outputName}_Variables`;
   writer.addDeclaration(
-    [typeName],
+    [inputName],
     [
-      `export interface ${typeName} {`,
-      ...selectionSet.selections.flatMap((s) => {
-        if (s.kind === 'Field') {
-        }
-      }),
+      `export interface ${inputName} {`,
+      ...inputFields.map(
+        (f) =>
+          `  ${useReadonlyInputs ? `readonly ` : ``}${f.name.value}${
+            f.type.kind === 'ClientNullType' ? `?` : ``
+          }: ${getClientType(f.type, {
+            parentheses: false,
+            nullType: `null | undefined`,
+            useReadonly: useReadonlyInputs,
+            getScalarType,
+            getEnumType,
+            getClientObjectType: (type) => type.name.value,
+          })};`,
+      ),
+      `}`,
+    ].join(`\n`),
+  );
+  writer.addDeclaration(
+    [outputName],
+    [
+      `export interface ${outputName} {`,
+      `  readonly __input?: (variables: ${inputName}) => void`,
+      ...clientType.fields.map(
+        (f) =>
+          `  ${useReadonlyInputs ? `readonly ` : ``}${
+            f.name.value
+          }: ${getClientType(f.type, {
+            parentheses: false,
+            nullType: `null`,
+            useReadonly: useReadonlyOutputs,
+            getScalarType,
+            getEnumType,
+            getClientObjectType: (type) =>
+              buildObjectType(
+                [
+                  outputName,
+                  f.name.value,
+                  ...(type.name ? [type.name.value] : []),
+                ],
+                type,
+                {
+                  useReadonly: useReadonlyOutputs,
+                  writer,
+                  getScalarType,
+                  getEnumType,
+                },
+              ),
+          })};`,
+      ),
       `}`,
     ].join(`\n`),
   );
 }
-export function buildFragmentType(
-  document: GraphQlDocument,
-  fragment: types.FragmentDefinitionNode,
-  {
-    writer,
-  }: {
-    writer: ITypeScriptWriter;
-  },
-): void {
-  writer.addDeclaration(
-    [fragment.name.value],
-    [
-      `export interface ${fragment.name.value} {`,
-      fragment.selectionSet.selections.flatMap((s) => {}),
-      `}`,
-    ].join(`\n`),
-  );
+
+function pascalCase(s: string) {
+  return s[0].toUpperCase() + s.substr(1);
 }

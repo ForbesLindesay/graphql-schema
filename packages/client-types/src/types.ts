@@ -5,32 +5,48 @@ export interface TypeNameTypeNode {
   readonly name: types.NameNode;
 }
 
-export interface ListTypeNode {
+export interface ListTypeNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'}
+> {
   readonly kind: 'ClientListType';
-  readonly ofType: TypeNode;
+  readonly ofType: TypeNode<TObjectTypeNode>;
 }
 
-export interface UnionTypeNode {
+export interface UnionTypeNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'},
+  T extends TypeExceptNullableAndUnion<TObjectTypeNode>
+> {
   readonly kind: 'ClientUnionType';
-  readonly types: readonly TypeExceptUnionNode[];
+  readonly types: readonly T[];
 }
 
-export interface NullTypeNode {
+export interface NullTypeNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'},
+  T extends TypeExceptNullableNode<TObjectTypeNode>
+> {
   readonly kind: 'ClientNullType';
+  readonly ofType: T;
 }
 
-export interface FieldNode {
+export interface FieldNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'}
+> {
   readonly kind: 'ClientField';
   readonly loc: types.Location;
   readonly description?: types.StringValueNode;
   readonly name: types.NameNode;
-  readonly type: TypeNode;
+  readonly type: TypeNode<TObjectTypeNode>;
 }
 
-export interface ObjectTypeNode {
+export interface InputObjectTypeNode {
+  readonly kind: 'ClientObjectType';
+  readonly name: types.NameNode;
+  readonly fields: readonly FieldNode<InputObjectTypeNode>[];
+}
+export interface OutputObjectTypeNode {
   readonly kind: 'ClientObjectType';
   readonly name?: types.NameNode;
-  readonly fields: readonly FieldNode[];
+  readonly fields: readonly FieldNode<OutputObjectTypeNode>[];
 }
 export type BooleanTypeNode = types.BooleanTypeNode;
 export type FloatTypeNode = types.FloatTypeNode;
@@ -40,12 +56,9 @@ export type StringTypeNode = types.StringTypeNode;
 export type ScalarTypeDefinitionNode = types.ScalarTypeDefinitionNode;
 export type EnumTypeDefinitionNode = types.EnumTypeDefinitionNode;
 
-export type TypeExceptUnionNode =
-  // resolved client types
+export type TypeExceptObjectAndList =
+  // resolved client types (except object & list)
   | TypeNameTypeNode
-  | ObjectTypeNode
-  | NullTypeNode
-  | ListTypeNode
   // primitive types
   | BooleanTypeNode
   | FloatTypeNode
@@ -56,4 +69,21 @@ export type TypeExceptUnionNode =
   | ScalarTypeDefinitionNode
   | EnumTypeDefinitionNode;
 
-export type TypeNode = UnionTypeNode | TypeExceptUnionNode;
+export type TypeExceptNullableAndUnion<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'}
+> = TypeExceptObjectAndList | TObjectTypeNode | ListTypeNode<TObjectTypeNode>;
+
+export type TypeExceptNullableNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'}
+> =
+  | UnionTypeNode<TObjectTypeNode, TypeExceptNullableAndUnion<TObjectTypeNode>>
+  | TypeExceptNullableAndUnion<TObjectTypeNode>;
+
+export type TypeNode<
+  TObjectTypeNode extends {readonly kind: 'ClientObjectType'}
+> =
+  | NullTypeNode<TObjectTypeNode, TypeExceptNullableNode<TObjectTypeNode>>
+  | TypeExceptNullableNode<TObjectTypeNode>;
+
+export type OutputTypeNode = TypeNode<OutputObjectTypeNode>;
+export type InputTypeNode = TypeNode<InputObjectTypeNode>;

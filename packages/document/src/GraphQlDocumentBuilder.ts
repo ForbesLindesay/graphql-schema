@@ -86,9 +86,11 @@ export default class GraphQlDocumentBuilder {
         return this._fromUnionTypeDefinitionNode(node);
       case 'SchemaDefinition':
       case 'SchemaExtension':
-        return throwGraphQlError(`Unsupported node: ${node.kind}`, {
-          node: {loc: this._fromLocation(node.loc)},
-        });
+        return throwGraphQlError(
+          `UNSUPPORTED_GRAPHQL_NODE`,
+          `Unsupported node: ${node.kind}`,
+          {loc: this._fromLocation(node.loc)},
+        );
       default:
         return assertNever(node);
     }
@@ -119,8 +121,9 @@ export default class GraphQlDocumentBuilder {
         (loc): types.DirectiveLocationNode => {
           if (!isValidDirectiveLocation(loc.value)) {
             return throwGraphQlError(
+              `INVALID_DIRECTIVE_LOCATION`,
               `Invalid location for directive: "${loc.value}"`,
-              {node: {loc: this._fromLocation(loc.loc)}},
+              {loc: this._fromLocation(loc.loc)},
             );
           }
           return {

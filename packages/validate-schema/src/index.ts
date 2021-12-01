@@ -1,12 +1,14 @@
 import {readFileSync} from 'fs';
 import {relative} from 'path';
+import GraphQlDocument, {
+  errors,
+  fromDocumentNode,
+  types,
+} from '@graphql-schema/document';
 import {FEDERATION_SPEC_PREFIX} from '@graphql-schema/federation-spec';
-import GraphQLError from '@graphql-schema/error';
 import {GraphQLError as RawGraphQLError} from 'graphql/error';
 import {parse, DocumentNode, DefinitionNode} from 'graphql/language';
 import {validateSDL} from 'graphql/validation/validate';
-import {codeFrameColumns} from '@babel/code-frame';
-import chalk from 'chalk';
 import {buildASTSchema, GraphQLSchema} from 'graphql';
 
 export interface ValidateSchemaOptions {
@@ -14,11 +16,12 @@ export interface ValidateSchemaOptions {
   filename?: string;
 }
 
-export {GraphQLError};
+export {GraphQlDocument};
 
 export interface ValidateSchemaResult {
   source: string;
-  document: DocumentNode;
+  document: GraphQlDocument;
+  documentNode: DocumentNode;
   schema: GraphQLSchema;
 }
 
@@ -31,12 +34,12 @@ export function validateSchemaFile(
     schemaString = readFileSync(filename, 'utf8');
   } catch (ex: any) {
     if (ex.code === 'ENOENT') {
-      throw new GraphQLError(
+      return errors.throwGraphQlError(
         'ENOENT',
-        `${chalk.red(`Could not find the schema at`)} ${chalk.cyan(
-          relative(process.cwd(), filename).replace(/\\/g, '/'),
-        )}`,
-        {filename},
+        `Could not find the schema at ${filename}`,
+        {
+          loc: {kind: 'FileLocationSource', filename, source: ``},
+        },
       );
     }
     throw ex;
@@ -54,16 +57,9 @@ export default function validateSchema(
   try {
     parsedSchema = parse(schemaString);
   } catch (ex: any) {
-    throw new GraphQLError(
-      'GRAPH_SYNTAX_ERROR',
-      (options.filename
-        ? `${chalk.red(`GraphQL syntax error in`)} ${chalk.cyan(
-            options.filename,
-          )}${chalk.red(`:`)}\n\n`
-        : `${chalk.red(`GraphQL syntax error:`)}\n\n`) +
-        formatError(ex, schemaString),
-      {...options, source: schemaString, locations: ex.locations},
-    );
+    return errors.throwGraphQlError('GRAPH_SYNTAX_ERROR', ex.message, {
+      loc: getLocation(ex, {schemaString, filename: options.filename}),
+    });
   }
 
   // If we are looking at a federated schema, we may be extending
@@ -92,24 +88,44 @@ export default function validateSchema(
       }
     : parsedSchema;
 
-  const errors = validateSDL(schemaToValidate);
-  if (errors.length) {
-    throw new GraphQLError(
-      'GRAPH_SCHEMA_ERROR',
-      (options.filename
-        ? `${chalk.red(
-            `GraphQL schema ${errors.length > 1 ? 'errors' : 'error'} in`,
-          )} ${chalk.cyan(options.filename)}${chalk.red(`:`)}\n\n`
-        : chalk.red(
-            `GraphQL schema ${errors.length > 1 ? 'errors' : 'error'}:\n\n`,
-          )) + errors.map((e) => formatError(e, schemaString)).join('\n'),
-      {...options, source: schemaString, errors},
+  const validationErrors = validateSDL(schemaToValidate);
+  if (validationErrors.length) {
+    return errors.throwGraphQlError(
+      `GRAPHQL_SCHEMA_ERROR`,
+      validationErrors[0].message,
+      {
+        loc: getLocation(validationErrors[0], {
+          schemaString,
+          filename: options.filename,
+        }),
+        errors:
+          validationErrors.length > 1
+            ? validationErrors.map((err) =>
+                errors.createGraphQlError(`GRAPHQL_SCHEMA_ERROR`, err.message, {
+                  loc: getLocation(err, {
+                    schemaString,
+                    filename: options.filename,
+                  }),
+                }),
+              )
+            : [],
+      },
     );
   }
 
   return {
     source: schemaString,
-    document: parsedSchema,
+    document: fromDocumentNode(parsedSchema, {
+      referencedDocuments: [],
+      source: options.filename
+        ? {
+            kind: 'FileLocationSource',
+            filename: options.filename,
+            source: schemaString,
+          }
+        : {kind: 'StringLocationSource', source: schemaString},
+    }),
+    documentNode: parsedSchema,
     schema: buildASTSchema(parsedSchema, {
       assumeValid: true,
       assumeValidSDL: true,
@@ -117,24 +133,22 @@ export default function validateSchema(
   };
 }
 
-function formatError(
+function getLocation(
   e: RawGraphQLError | {message: string; locations: undefined},
-  schemaString: string,
-) {
+  {
+    schemaString,
+    filename,
+  }: {schemaString: string; filename: string | undefined},
+): types.Location {
+  const source: types.LocationSource = filename
+    ? {kind: 'FileLocationSource', filename, source: schemaString}
+    : {kind: 'StringLocationSource', source: schemaString};
+
   if (e.locations && e.locations.length === 1) {
     const [loc] = e.locations;
-    return (
-      e.message +
-      '\n\n' +
-      codeFrameColumns(schemaString, {
-        start: {
-          line: loc.line,
-          column: loc.column,
-        },
-      }) +
-      '\n'
-    );
-  } else {
-    return e.message;
+    const position = errors.lineAndColumnToIndex(schemaString, loc);
+    if (position) return {kind: 'LocationRange', source, start: position};
   }
+
+  return source;
 }

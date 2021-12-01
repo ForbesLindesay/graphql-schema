@@ -2,9 +2,8 @@ import {
   ObjectMode,
   ObjectConfig,
 } from '@graphql-schema/build-typescript-declarations';
-import {GraphQLError} from '@graphql-schema/validate-schema';
+import {types, errors} from '@graphql-schema/document';
 import * as ft from 'funtypes';
-import {GraphQLObjectType} from 'graphql';
 
 export const ObjectConfigTypeImportSchema = ft.Named(
   `ObjectConfigTypeImport`,
@@ -24,25 +23,28 @@ export const ObjectConfigByNameSchema = ft.Named(
 );
 
 export const ObjectConfigSchema: ft.Runtype<
-  ObjectConfig | ((e: GraphQLObjectType) => ObjectConfig)
+  ObjectConfig | ((e: types.ObjectTypeDefinitionNode) => ObjectConfig)
 > = ft
   .Union(ObjectConfigTypeImportSchema, ObjectConfigByNameSchema)
   .withParser({
     name: 'ObjectConfig',
     parse: (
       config,
-    ): ft.Result<ObjectConfig | ((e: GraphQLObjectType) => ObjectConfig)> =>
+    ): ft.Result<
+      ObjectConfig | ((e: types.ObjectTypeDefinitionNode) => ObjectConfig)
+    > =>
       config.mode === 'BY_OBJECT_NAME'
         ? {
             success: true,
-            value: (e: GraphQLObjectType) => {
-              const c = config.objects[e.name];
+            value: (e: types.ObjectTypeDefinitionNode) => {
+              const c = config.objects[e.name.value];
               if (c !== undefined) {
                 return c;
               } else {
-                throw new GraphQLError(
+                errors.throwGraphQlError(
                   `MISSING_OBJECT`,
-                  `Your GraphQL schema includes an object called "${e.name}" but that object does not exist in your config.`,
+                  `Your GraphQL schema includes an object called "${e.name.value}" but that object does not exist in your config.`,
+                  {loc: e.name.loc},
                 );
               }
             },

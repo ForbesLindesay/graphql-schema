@@ -2,12 +2,12 @@ import type * as ast from 'graphql/language/ast';
 import type * as gt from 'graphql/type';
 import GraphQlDocument from './GraphQlDocument';
 import GraphQlDocumentBuilder from './GraphQlDocumentBuilder';
+import * as errors from './errors';
 import type * as types from './types';
 
 export type {types};
+export {errors};
 export default GraphQlDocument;
-
-export {throwGraphQlError, printGraphQlLocation} from './errors';
 
 export {
   isOperationDefinitionNode,

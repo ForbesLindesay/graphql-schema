@@ -2,9 +2,8 @@ import {
   EnumMode,
   EnumConfig,
 } from '@graphql-schema/build-typescript-declarations';
-import {GraphQLError} from '@graphql-schema/validate-schema';
+import {types, errors} from '@graphql-schema/document';
 import * as ft from 'funtypes';
-import {GraphQLEnumType} from 'graphql';
 
 export const EnumConfigStringLiteralsSchema = ft.Named(
   `EnumConfigStringLiterals`,
@@ -48,7 +47,7 @@ export const EnumConfigByNameSchema = ft.Named(
 );
 
 export const EnumConfigSchema: ft.Runtype<
-  EnumConfig | ((e: GraphQLEnumType) => EnumConfig)
+  EnumConfig | ((e: types.EnumTypeDefinitionNode) => EnumConfig)
 > = ft
   .Union(
     EnumConfigStringLiteralsSchema,
@@ -60,18 +59,21 @@ export const EnumConfigSchema: ft.Runtype<
     name: 'EnumConfig',
     parse: (
       config,
-    ): ft.Result<EnumConfig | ((e: GraphQLEnumType) => EnumConfig)> =>
+    ): ft.Result<
+      EnumConfig | ((e: types.EnumTypeDefinitionNode) => EnumConfig)
+    > =>
       config.mode === 'BY_ENUM_NAME'
         ? {
             success: true,
-            value: (e: GraphQLEnumType) => {
-              const c = config.enums[e.name];
+            value: (e: types.EnumTypeDefinitionNode) => {
+              const c = config.enums[e.name.value];
               if (c !== undefined) {
                 return c;
               } else {
-                throw new GraphQLError(
+                errors.throwGraphQlError(
                   `MISSING_ENUM`,
-                  `Your GraphQL schema includes an enum called "${e.name}" but that enum does not exist in your config.`,
+                  `Your GraphQL schema includes an enum called "${e.name.value}" but that enum does not exist in your config.`,
+                  {loc: e.name.loc},
                 );
               }
             },

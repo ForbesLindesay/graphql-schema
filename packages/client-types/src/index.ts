@@ -1,52 +1,95 @@
-import GraphQlDocument, {
-  throwGraphQlError,
-  types,
-} from '@graphql-schema/document';
+import GraphQlDocument, {errors, types} from '@graphql-schema/document';
 import assertNever from 'assert-never';
 import * as clientTypes from './types';
 
 export {clientTypes};
 
 const typesEqualityCheckers: {
-  [TKey in clientTypes.TypeNode['kind']]: (
-    a: Extract<clientTypes.TypeNode, {readonly kind: TKey}>,
-    b: Extract<clientTypes.TypeNode, {readonly kind: TKey}>,
+  [TKey in clientTypes.TypeNode<{
+    readonly kind: 'ClientObjectType';
+  }>['kind']]: (
+    a: Extract<
+      clientTypes.TypeNode<{readonly kind: 'ClientObjectType'}>,
+      {readonly kind: TKey}
+    >,
+    b: Extract<
+      clientTypes.TypeNode<{readonly kind: 'ClientObjectType'}>,
+      {readonly kind: TKey}
+    >,
   ) => boolean;
 } = {
-  ClientListType: (a, b) => typesEqual(a.ofType, b.ofType),
-  ClientUnionType: (a, b) =>
-    a.types.every((ta) => b.types.some((tb) => typesEqual(ta, tb))) &&
-    b.types.every((tb) => a.types.some((ta) => typesEqual(ta, tb))),
-  ClientNullType: () => true,
-  ClientObjectType: () => false,
-  ClientTypeNameType: (a, b) => a.name.value === b.name.value,
   BooleanType: () => true,
   FloatType: () => true,
   IdType: () => true,
   IntType: () => true,
   StringType: () => true,
+
+  ClientTypeNameType: (a, b) => a.name.value === b.name.value,
   ScalarTypeDefinition: (a, b) => a.name.value === b.name.value,
   EnumTypeDefinition: (a, b) => a.name.value === b.name.value,
+  ClientListType: (a, b) => typesEqual(a.ofType, b.ofType),
+  ClientObjectType: () => false,
+  ClientNullType: (a, b) => typesEqual(a.ofType, b.ofType),
+  ClientUnionType: () => false,
 };
 
-function typesEqual(a: clientTypes.TypeNode, b: clientTypes.TypeNode): boolean {
+function typesEqual(
+  a: clientTypes.TypeNode<{readonly kind: 'ClientObjectType'}>,
+  b: clientTypes.TypeNode<{readonly kind: 'ClientObjectType'}>,
+): boolean {
   return a.kind === b.kind && typesEqualityCheckers[a.kind](a as any, b as any);
 }
 
-function unionOfTypes(
-  types: readonly clientTypes.TypeNode[],
-): clientTypes.TypeNode {
+function unionOfTypes<
+  TObject extends {readonly kind: 'ClientObjectType'},
+  T extends clientTypes.TypeExceptNullableAndUnion<TObject>
+>(
+  types: readonly (
+    | T
+    | clientTypes.UnionTypeNode<TObject, T>
+    | clientTypes.NullTypeNode<
+        TObject,
+        T | clientTypes.UnionTypeNode<TObject, T>
+      >
+  )[],
+):
+  | T
+  | clientTypes.UnionTypeNode<TObject, T>
+  | clientTypes.NullTypeNode<
+      TObject,
+      T | clientTypes.UnionTypeNode<TObject, T>
+    > {
   if (types.length === 1) return types[0];
-  const resultTypes: clientTypes.TypeExceptUnionNode[] = [];
-  for (const t of types.flatMap((t) =>
-    t.kind === 'ClientUnionType' ? t.types : [t],
-  )) {
+
+  const resultTypes: T[] = [];
+  for (const t of types
+    .map((t) => (t.kind === 'ClientNullType' ? t.ofType : t))
+    .flatMap((t) => (t.kind === 'ClientUnionType' ? t.types : [t]))) {
     if (!resultTypes.some((rt) => typesEqual(t, rt))) {
       resultTypes.push(t);
     }
   }
-  if (resultTypes.length === 1) return resultTypes[0];
-  return {kind: 'ClientUnionType', types: resultTypes};
+  const nonNullResult: T | clientTypes.UnionTypeNode<TObject, T> =
+    resultTypes.length === 1
+      ? resultTypes[0]
+      : {kind: 'ClientUnionType', types: resultTypes};
+
+  return types.some((t) => t.kind === 'ClientNullType')
+    ? {kind: 'ClientNullType', ofType: nonNullResult}
+    : nonNullResult;
+}
+
+function nullableOfType<
+  TObject extends {readonly kind: 'ClientObjectType'},
+  T extends clientTypes.TypeExceptNullableNode<TObject>
+>(
+  type: T | clientTypes.NullTypeNode<TObject, T>,
+): clientTypes.NullTypeNode<TObject, T> {
+  if (type.kind === 'ClientNullType') {
+    return type;
+  } else {
+    return {kind: 'ClientNullType', ofType: type};
+  }
 }
 
 function getObjectTypes(
@@ -139,7 +182,7 @@ function groupObjectTypes(
   return {referencedObjectTypes, otherObjectTypes};
 }
 
-function resolveType(
+function resolveType<TObject extends {readonly kind: 'ClientObjectType'}>(
   type: types.TypeNode,
   {
     resolveLiteralType,
@@ -152,10 +195,10 @@ function resolveType(
         | types.IdTypeNode
         | types.IntTypeNode
         | types.StringTypeNode,
-    ) => clientTypes.TypeNode;
-    resolveNamedType: (t: types.NameNode) => clientTypes.TypeNode;
+    ) => clientTypes.TypeNode<TObject>;
+    resolveNamedType: (t: types.NameNode) => clientTypes.TypeNode<TObject>;
   },
-): clientTypes.TypeNode {
+): clientTypes.TypeNode<TObject> {
   switch (type.kind) {
     case 'BooleanType':
     case 'FloatType':
@@ -164,10 +207,9 @@ function resolveType(
     case 'StringType':
       return resolveLiteralType(type);
     case 'NullableType':
-      return unionOfTypes([
-        {kind: 'ClientNullType'},
+      return nullableOfType(
         resolveType(type.ofType, {resolveLiteralType, resolveNamedType}),
-      ]);
+      );
     case 'ListType':
       return {
         kind: 'ClientListType',
@@ -188,13 +230,14 @@ function resolveOutputType(
   type: types.TypeNode,
   field: types.FieldNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.TypeNode {
+): clientTypes.OutputTypeNode {
   return resolveType(type, {
     resolveLiteralType: (type) => {
       if (field.selectionSet) {
-        return throwGraphQlError(
+        return errors.throwGraphQlError(
+          `UNEXPECTED_SELECTION_SET`,
           `Cannot pass a selection set to the field "${field.name.value}"`,
-          {node: field},
+          {loc: field.loc},
         );
       }
       return type;
@@ -203,16 +246,18 @@ function resolveOutputType(
       const result = document.getTypeX(type);
       switch (result.kind) {
         case 'InputObjectTypeDefinition':
-          return throwGraphQlError(
+          return errors.throwGraphQlError(
+            `INVALID_OUTPUT_TYPE`,
             `Cannot have an input object as the return type for "${field.name.value}"`,
-            {node: field},
+            {loc: field.loc},
           );
         case 'EnumTypeDefinition':
         case 'ScalarTypeDefinition':
           if (field.selectionSet) {
-            return throwGraphQlError(
+            return errors.throwGraphQlError(
+              `UNEXPECTED_SELECTION_SET`,
               `Cannot pass a selection set to the field "${field.name.value}"`,
-              {node: field},
+              {loc: field.loc},
             );
           }
           return result;
@@ -220,9 +265,10 @@ function resolveOutputType(
         case 'ObjectTypeDefinition':
         case 'UnionTypeDefinition':
           if (!field.selectionSet) {
-            return throwGraphQlError(
+            return errors.throwGraphQlError(
+              `MISSING_SELECTION_SET`,
               `You must pass a selection set to the field "${field.name.value}"`,
-              {node: field},
+              {loc: field.loc},
             );
           }
           return getResultTypeForSelectionSet(result, field.selectionSet, {
@@ -236,7 +282,7 @@ function resolveOutputType(
 function resolveInputTypeForOperation(
   type: types.TypeNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.TypeNode {
+): clientTypes.InputTypeNode {
   return resolveType(type, {
     resolveLiteralType: (type) => {
       return type;
@@ -249,7 +295,7 @@ function resolveInputTypeForOperation(
             kind: 'ClientObjectType',
             name: result.name,
             fields: result.fields.map(
-              (f): clientTypes.FieldNode => ({
+              (f): clientTypes.FieldNode<clientTypes.InputObjectTypeNode> => ({
                 kind: 'ClientField',
                 description: f.description,
                 loc: f.loc,
@@ -264,16 +310,17 @@ function resolveInputTypeForOperation(
         case 'InterfaceTypeDefinition':
         case 'ObjectTypeDefinition':
         case 'UnionTypeDefinition':
-          return throwGraphQlError(
+          return errors.throwGraphQlError(
+            `INVALID_INPUT_TYPE`,
             `You cannot use an interface, object or union as an input`,
-            {node: type},
+            {loc: type.loc},
           );
       }
     },
   });
 }
 
-function objectTypeMatchesCondition(
+export function objectTypeMatchesCondition(
   type: types.ObjectTypeDefinitionNode,
   typeCondition: types.NameNode,
   {document}: {document: GraphQlDocument},
@@ -289,9 +336,10 @@ function objectTypeMatchesCondition(
         objectTypeMatchesCondition(type, t, {document}),
       );
     default:
-      return throwGraphQlError(
+      return errors.throwGraphQlError(
+        `INVALID_TYPE_CONDITION`,
         `Expected type condition to refer to an object or union`,
-        {node: typeCondition},
+        {loc: typeCondition.loc},
       );
   }
 }
@@ -300,22 +348,24 @@ function getResultTypeForObject(
   type: types.ObjectTypeDefinitionNode,
   selectionSet: types.SelectionSetNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.ObjectTypeNode {
-  const fields: clientTypes.FieldNode[] = [];
+): clientTypes.OutputObjectTypeNode {
+  const fields: clientTypes.FieldNode<clientTypes.OutputObjectTypeNode>[] = [];
   for (const selection of selectionSet.selections) {
     switch (selection.kind) {
       case 'Field': {
         if (selection.name.value === '__typename') {
           if (selection.arguments.length) {
-            return throwGraphQlError(
+            return errors.throwGraphQlError(
+              `INVALID_ARGS`,
               `Cannot pass arguments to the builtin field "__typename"`,
-              {node: selection},
+              {loc: selection.loc},
             );
           }
           if (selection.selectionSet) {
-            return throwGraphQlError(
+            return errors.throwGraphQlError(
+              `UNEXPECTED_SELECTION_SET`,
               `Cannot pass a selection set to the builtin field "__typename"`,
-              {node: selection},
+              {loc: selection.loc},
             );
           }
           fields.push({
@@ -332,9 +382,10 @@ function getResultTypeForObject(
             (f) => f.name.value === selection.name.value,
           );
           if (!fieldSource) {
-            return throwGraphQlError(
+            return errors.throwGraphQlError(
+              `MISSING_FIELD`,
               `Unable to find field "${selection.name.value}" on object "${type.name.value}"`,
-              {node: selection},
+              {loc: selection.loc},
             );
           }
           // TODO: validate arguments
@@ -376,6 +427,7 @@ function getResultTypeForObject(
   }
   return {
     kind: 'ClientObjectType',
+    name: type.name,
     fields,
   };
 }
@@ -387,7 +439,12 @@ function getResultTypeForSelectionSet(
     | types.UnionTypeDefinitionNode,
   selectionSet: types.SelectionSetNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.TypeNode {
+):
+  | clientTypes.OutputObjectTypeNode
+  | clientTypes.UnionTypeNode<
+      clientTypes.OutputObjectTypeNode,
+      clientTypes.OutputObjectTypeNode
+    > {
   if (type.kind === 'ObjectTypeDefinition') {
     const referencedTypeNames = getReferencedTypeNames(selectionSet, {
       document,
@@ -395,9 +452,10 @@ function getResultTypeForSelectionSet(
     for (const name of referencedTypeNames) {
       if (name.value !== type.name.value) {
         // TODO: make this error use the parent location for the fragment
-        return throwGraphQlError(
+        return errors.throwGraphQlError(
+          `TYPE_CONFLICT`,
           `The selection of ${name.value} does not match the type ${type.name.value}`,
-          {node: name},
+          {loc: name.loc},
         );
       }
     }
@@ -408,10 +466,13 @@ function getResultTypeForSelectionSet(
     selectionSet,
     {document},
   );
-  const resultTypes: clientTypes.ObjectTypeNode[] = [];
+  const resultTypes: clientTypes.OutputObjectTypeNode[] = [];
 
-  let base: clientTypes.ObjectTypeNode | null = null;
-  const fieldTypes = new Map<string, clientTypes.TypeNode[]>();
+  let base: clientTypes.OutputObjectTypeNode | null = null;
+  const fieldTypes = new Map<
+    string,
+    clientTypes.TypeNode<clientTypes.OutputObjectTypeNode>[]
+  >();
   for (const type of otherObjectTypes) {
     const resultType = getResultTypeForObject(type, selectionSet, {document});
     if (base === null) {
@@ -424,7 +485,7 @@ function getResultTypeForSelectionSet(
   }
   if (base) {
     resultTypes.push({
-      ...base,
+      kind: 'ClientObjectType',
       fields: base.fields
         .map((f) => {
           const typesForF = fieldTypes.get(f.name.value);
@@ -455,79 +516,81 @@ function getResultTypeForSelectionSet(
 }
 
 function getRootTypeForOperation(
-  operation: types.OperationDefinitionNode | types.FragmentDefinitionNode,
+  operation: types.OperationDefinitionNode,
   {document}: {document: GraphQlDocument},
-) {
-  switch (operation.kind) {
-    case 'FragmentDefinition': {
-      const type = document.getTypeX(operation.typeCondition);
-      if (
-        type.kind !== 'ObjectTypeDefinition' &&
-        type.kind !== 'UnionTypeDefinition' &&
-        type.kind !== 'InterfaceTypeDefinition'
-      ) {
-        throwGraphQlError(
-          `A fragment cannot reference the ${type.kind}, "${operation.typeCondition.value}"`,
-          {node: operation.typeCondition},
-        );
-      }
-      return type;
-    }
-    case 'OperationDefinition':
-      switch (operation.operation) {
-        case 'query':
-          return document.getObjectTypeDefinitionX({
-            kind: 'Name',
-            value: 'Query',
-            loc: operation.loc,
-          });
-        case 'mutation':
-          return document.getObjectTypeDefinitionX({
-            kind: 'Name',
-            value: 'Mutation',
-            loc: operation.loc,
-          });
-        case 'subscription':
-          // TODO: subscriptions are a little bit different. We should figure out how best to handle them.
-          return document.getObjectTypeDefinitionX({
-            kind: 'Name',
-            value: 'Subscription',
-            loc: operation.loc,
-          });
-      }
+): types.ObjectTypeDefinitionNode {
+  switch (operation.operation) {
+    case 'query':
+      return document.getObjectTypeDefinitionX({
+        kind: 'Name',
+        value: 'Query',
+        loc: operation.loc,
+      });
+    case 'mutation':
+      return document.getObjectTypeDefinitionX({
+        kind: 'Name',
+        value: 'Mutation',
+        loc: operation.loc,
+      });
+    case 'subscription':
+      // TODO: subscriptions are a little bit different. We should figure out how best to handle them.
+      return document.getObjectTypeDefinitionX({
+        kind: 'Name',
+        value: 'Subscription',
+        loc: operation.loc,
+      });
   }
 }
 
 export function getResultTypeForOperation(
-  operation: types.OperationDefinitionNode | types.FragmentDefinitionNode,
+  operation: types.OperationDefinitionNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.TypeNode {
+): clientTypes.OutputObjectTypeNode {
   const type = getRootTypeForOperation(operation, {document});
+  return getResultTypeForObject(type, operation.selectionSet, {document});
+}
+
+export function getResultTypeForFragment(
+  operation: types.FragmentDefinitionNode,
+  {document}: {document: GraphQlDocument},
+):
+  | clientTypes.OutputObjectTypeNode
+  | clientTypes.UnionTypeNode<
+      clientTypes.OutputObjectTypeNode,
+      clientTypes.OutputObjectTypeNode
+    > {
+  const type = document.getTypeX(operation.typeCondition);
+  if (
+    type.kind !== 'ObjectTypeDefinition' &&
+    type.kind !== 'UnionTypeDefinition' &&
+    type.kind !== 'InterfaceTypeDefinition'
+  ) {
+    errors.throwGraphQlError(
+      `INVALID_TYPE_CONDITION`,
+      `A fragment cannot reference the ${type.kind}, "${operation.typeCondition.value}"`,
+      {loc: operation.typeCondition.loc},
+    );
+  }
   return getResultTypeForSelectionSet(type, operation.selectionSet, {document});
 }
 
 export function getInputTypeForOperation(
   operation: types.OperationDefinitionNode | types.FragmentDefinitionNode,
   {document}: {document: GraphQlDocument},
-): clientTypes.TypeNode {
-  return {
-    kind: 'ClientObjectType',
-    fields: operation.variableDefinitions.map(
-      (variableDefinition): clientTypes.FieldNode => {
-        const t = resolveInputTypeForOperation(variableDefinition.type, {
-          document,
-        });
-        return {
-          kind: 'ClientField',
-          loc: variableDefinition.loc,
-          name: variableDefinition.variable.name,
-          type: variableDefinition.defaultValue
-            ? unionOfTypes([{kind: 'ClientNullType'}, t])
-            : t,
-        };
-      },
-    ),
-  };
+): readonly clientTypes.FieldNode<clientTypes.InputObjectTypeNode>[] {
+  return operation.variableDefinitions.map(
+    (
+      variableDefinition,
+    ): clientTypes.FieldNode<clientTypes.InputObjectTypeNode> => {
+      const t = resolveInputTypeForOperation(variableDefinition.type, {
+        document,
+      });
+      return {
+        kind: 'ClientField',
+        loc: variableDefinition.loc,
+        name: variableDefinition.variable.name,
+        type: variableDefinition.defaultValue ? nullableOfType(t) : t,
+      };
+    },
+  );
 }
-
-// (property) VariableDefinitionNode.type: types.TypeNode

@@ -1,4 +1,3 @@
-// import asCache from '@graphql-schema/map-as-cache';
 import {join} from 'path';
 import sane from 'sane';
 

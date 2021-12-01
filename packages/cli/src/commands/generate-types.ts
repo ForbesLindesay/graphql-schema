@@ -2,19 +2,14 @@ import {basename, dirname, relative, resolve} from 'path';
 import {mkdirSync, writeFileSync} from 'fs';
 import chalk from 'chalk';
 import {startChain, param, parse} from 'parameter-reducers';
+import {validateSchemaFile} from '@graphql-schema/validate-schema';
 import {
-  validateSchemaFile,
-  GraphQLError,
-} from '@graphql-schema/validate-schema';
-import {
-  buildEnumDeclarations,
-  buildInputObjectDeclarations,
-  buildInterfaceDeclarations,
-  buildObjectDeclarations,
-  buildScalarDeclarations,
-  buildUnionDeclarations,
-  getNamedTypes,
-  getResolverTypes,
+  buildEnumDeclaration,
+  buildInputObjectDeclaration,
+  buildInterfaceDeclaration,
+  buildObjectDeclaration,
+  buildScalarDeclaration,
+  buildUnionDeclaration,
 } from '@graphql-schema/build-typescript-declarations';
 import readConfigFile, {
   ResolverTypesConfigSchema,
@@ -57,11 +52,12 @@ export default async function generateTypes(args: string[]) {
           dirname(schemaFileName),
           [basename(schemaFileName)],
           async () => {
-            const {schema, source} = validateSchemaFile(schemaFileName, {
-              isFederated: config.schema.federated ?? false,
-            });
-            const types = getNamedTypes(schema);
-            const resolverTypes = getResolverTypes(types);
+            const {schema, document: s, source} = validateSchemaFile(
+              schemaFileName,
+              {
+                isFederated: config.schema.federated ?? false,
+              },
+            );
             console.log(
               chalk.green(
                 `Successfully validated ${relative(
@@ -79,22 +75,41 @@ export default async function generateTypes(args: string[]) {
             const writer = new TypeScriptWriter();
             const output = config.resolverTypes;
 
-            buildEnumDeclarations(types, {
-              writer,
-              config: output.enums,
-            });
-            buildScalarDeclarations(types, {
-              writer,
-              config: output.scalars,
-            });
-            buildInputObjectDeclarations(types, {
-              writer,
-              config: output.inputObjects,
-            });
+            for (const e of s.getEnumTypeDefinitions()) {
+              buildEnumDeclaration(e, {
+                writer,
+                config: output.enums,
+              });
+            }
 
-            buildUnionDeclarations(types, {writer});
-            buildInterfaceDeclarations(types, {writer});
-            buildObjectDeclarations(types, {writer, config: output.objects});
+            for (const scalar of s.getScalarTypeDefinitions()) {
+              buildScalarDeclaration(scalar, {
+                writer,
+                config: output.scalars,
+              });
+            }
+
+            for (const input of s.getInputObjectTypeDefinitions()) {
+              buildInputObjectDeclaration(input, {
+                writer,
+                config: output.inputObjects,
+              });
+            }
+
+            for (const union of s.getUnionTypeDefinitions()) {
+              buildUnionDeclaration(union, {writer});
+            }
+
+            for (const interfaceType of s.getInterfaceTypeDefinitions()) {
+              buildInterfaceDeclaration(interfaceType, {writer, document: s});
+            }
+
+            for (const objectType of s.getObjectTypeDefinitions()) {
+              buildObjectDeclaration(objectType, {
+                writer,
+                config: output.objects,
+              });
+            }
 
             buildScalarTypesInterface(types, {
               writer,

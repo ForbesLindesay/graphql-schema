@@ -5,7 +5,7 @@ function expectError(filename: string, isFederated: boolean, code: string) {
     validateSchemaFile(filename, {isFederated});
   } catch (ex: any) {
     expect(ex.code).toBe(code);
-    return expect(require('strip-ansi')(ex.message));
+    return expect(ex.message);
   }
   throw new Error('Expected validateSchema to throw');
 }

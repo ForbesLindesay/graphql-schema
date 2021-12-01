@@ -2,9 +2,8 @@ import {
   ScalarMode,
   ScalarConfig,
 } from '@graphql-schema/build-typescript-declarations';
-import {GraphQLError} from '@graphql-schema/validate-schema';
+import {types, errors} from '@graphql-schema/document';
 import * as ft from 'funtypes';
-import {GraphQLScalarType} from 'graphql';
 
 export const ScalarConfigInlineTypeSchema = ft.Named(
   `ScalarConfigInlineType`,
@@ -35,7 +34,7 @@ export const ScalarConfigByNameSchema = ft.Named(
 );
 
 export const ScalarConfigSchema: ft.Runtype<
-  ScalarConfig | ((e: GraphQLScalarType) => ScalarConfig)
+  ScalarConfig | ((e: types.ScalarTypeDefinitionNode) => ScalarConfig)
 > = ft
   .Union(
     ScalarConfigInlineTypeSchema,
@@ -46,18 +45,21 @@ export const ScalarConfigSchema: ft.Runtype<
     name: 'ScalarConfig',
     parse: (
       config,
-    ): ft.Result<ScalarConfig | ((e: GraphQLScalarType) => ScalarConfig)> =>
+    ): ft.Result<
+      ScalarConfig | ((e: types.ScalarTypeDefinitionNode) => ScalarConfig)
+    > =>
       config.mode === 'BY_SCALAR_NAME'
         ? {
             success: true,
-            value: (e: GraphQLScalarType) => {
-              const c = config.scalars[e.name];
+            value: (e: types.ScalarTypeDefinitionNode) => {
+              const c = config.scalars[e.name.value];
               if (c !== undefined) {
                 return c;
               } else {
-                throw new GraphQLError(
+                errors.throwGraphQlError(
                   `MISSING_Scalar`,
-                  `Your GraphQL schema includes an scalar called "${e.name}" but that scalar does not exist in your config.`,
+                  `Your GraphQL schema includes an scalar called "${e.name.value}" but that scalar does not exist in your config.`,
+                  {loc: e.name.loc},
                 );
               }
             },

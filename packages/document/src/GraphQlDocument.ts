@@ -36,9 +36,11 @@ class FilteredDefinitions<T extends types.DefinitionNode> {
   getOneX(name: types.NameNode): T {
     return (
       this.getOne(name) ??
-      throwGraphQlError(`Could not find ${this._name} called "${name.value}"`, {
-        node: name,
-      })
+      throwGraphQlError(
+        `MISSING_NAMED_NODE`,
+        `Could not find ${this._name} called "${name.value}"`,
+        {loc: name.loc},
+      )
     );
   }
 }
@@ -293,15 +295,17 @@ export default class GraphQlDocument {
     return this._types.getOneX(name);
   }
 
-  getInputTypes(options?: GetManyOptions): readonly types.TypeDefinitionNode[] {
+  getInputTypes(
+    options?: GetManyOptions,
+  ): readonly types.InputTypeDefinitionNode[] {
     return this._inputTypes.getMany(options);
   }
   getInputType(
     name: string | types.NameNode,
-  ): types.TypeDefinitionNode | undefined {
+  ): types.InputTypeDefinitionNode | undefined {
     return this._inputTypes.getOne(name);
   }
-  getInputTypeX(name: types.NameNode): types.TypeDefinitionNode {
+  getInputTypeX(name: types.NameNode): types.InputTypeDefinitionNode {
     return this._inputTypes.getOneX(name);
   }
 
