@@ -94,7 +94,10 @@ async function updateTsConfig() {
     before +
       `"references": [\n${packageDirectories
         .map(
-          (directory) => `    ${JSON.stringify({path: `./${directory}`})},\n`,
+          (directory, i) =>
+            `    {"path": ${JSON.stringify(`./${directory}`)}}${
+              i !== packageDirectories.length - 1 ? `,` : ``
+            }\n`,
         )
         .join(``)}  ]` +
       after,
