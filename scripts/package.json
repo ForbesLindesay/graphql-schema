@@ -1,0 +1,30 @@
+{
+  "name": "@graphql-schema/scripts",
+  "private": true,
+  "@rollingversions/ignore": true,
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "dependencies": {
+    "@google-cloud/secret-manager": "^3.11.0",
+    "@mavenoid/dataloader": "^3.1.0",
+    "chalk": "^4.0.0",
+    "cross-fetch": "^3.1.4",
+    "execa": "^5.1.1",
+    "funtypes": "^5.0.2",
+    "interrogator": "^1.1.0",
+    "is-builtin-module": "^3.1.0",
+    "jest-diff": "^27.5.1",
+    "lsr": "^2.0.0",
+    "parameter-reducers": "^2.0.0",
+    "prettier": "^2.5.1",
+    "pretty-format": "^27.5.1",
+    "throat": "^6.0.1"
+  },
+  "scripts": {
+    "lint": "eslint --fix --config ../.typescript.eslintrc.js --no-eslintrc --ext .js,.ts,.tsx src"
+  },
+  "devDependencies": {
+    "@types/prettier": "^2.4.4"
+  }
+}

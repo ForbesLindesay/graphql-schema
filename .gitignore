@@ -87,4 +87,6 @@ __generated__/
 .vscode
 .idea
 
-buildinfo.json
+experiments/
+
+.lint-cache

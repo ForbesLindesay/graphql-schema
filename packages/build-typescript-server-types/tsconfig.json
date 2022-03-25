@@ -1,0 +1,18 @@
+{
+  "extends": "@forbeslindesay/tsconfig",
+  "compilerOptions": {
+    "outDir": "lib",
+    "isolatedModules": true,
+    "incremental": true,
+    "composite": true,
+    "rootDir": "src",
+    "tsBuildInfoFile": "lib/.tsbuildinfo",
+    "lib": ["ES2020"]
+  },
+  "include": ["src"],
+  "references": [
+    {"path": "../build-typescript-declarations"},
+    {"path": "../document"},
+    {"path": "../typescript-writer"}
+  ]
+}

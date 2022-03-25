@@ -1,0 +1,19 @@
+{
+  "name": "@graphql-schema/typescript-writer",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git@github.com:ForbesLindesay/graphql-schema.git",
+  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

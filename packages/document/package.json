@@ -1,0 +1,23 @@
+{
+  "name": "@graphql-schema/document",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git@github.com:ForbesLindesay/graphql-schema.git",
+  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@babel/code-frame": "^7.8.3",
+    "assert-never": "^1.2.1",
+    "graphql": "^14.6.0"
+  },
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

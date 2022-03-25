@@ -1,0 +1,28 @@
+{
+  "name": "@graphql-schema/validate-operations",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git@github.com:ForbesLindesay/graphql-schema.git",
+  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@babel/code-frame": "^7.8.3",
+    "@graphql-schema/client-types": "^0.0.0",
+    "@graphql-schema/document": "^0.0.0",
+    "assert-never": "^1.2.1",
+    "chalk": "^4.0.0",
+    "graphql": "^14.6.0"
+  },
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0",
+    "@types/babel__code-frame": "^7.0.1",
+    "strip-ansi": "^6.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

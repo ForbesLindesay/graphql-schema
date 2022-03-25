@@ -1,0 +1,23 @@
+{
+  "name": "@graphql-schema/build-typescript-server-types",
+  "version": "0.0.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git@github.com:ForbesLindesay/graphql-schema.git",
+  "author": "Forbes Lindesay <forbes@lindesay.co.uk>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@graphql-schema/build-typescript-declarations": "^0.0.0",
+    "@graphql-schema/document": "^0.0.0",
+    "@graphql-schema/typescript-writer": "^0.0.0",
+    "assert-never": "^1.2.1",
+    "graphql": "^14.6.0"
+  },
+  "devDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
+}
