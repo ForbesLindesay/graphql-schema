@@ -1,5 +1,6 @@
-import {GraphQLScalarType} from 'graphql';
 import {showError} from 'funtypes';
+import {GraphQLScalarType} from 'graphql';
+
 import getLiteralValue from './getLiteralValue';
 
 export type ScalarParseResult<T> =

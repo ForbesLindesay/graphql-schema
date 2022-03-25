@@ -1,4 +1,4 @@
-import {validateSchemaFile} from '../';
+import {validateSchemaFile} from '..';
 
 function expectError(filename: string, isFederated: boolean, code: string) {
   try {

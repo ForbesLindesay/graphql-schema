@@ -1,4 +1,4 @@
-import Location from '../Location';
+import type Location from '../Location';
 
 export default interface BooleanValueNode {
   readonly kind: 'BooleanValue';

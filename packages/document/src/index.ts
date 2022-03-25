@@ -1,8 +1,9 @@
 import type * as ast from 'graphql/language/ast';
 import type * as gt from 'graphql/type';
+
+import * as errors from './errors';
 import GraphQlDocument from './GraphQlDocument';
 import GraphQlDocumentBuilder from './GraphQlDocumentBuilder';
-import * as errors from './errors';
 import type * as types from './types';
 
 export type {types};

@@ -1,6 +1,7 @@
 import assertNever from 'assert-never';
 import type * as ast from 'graphql/language/ast';
 import * as gt from 'graphql/type';
+
 import {throwGraphQlError} from './errors';
 import GraphQlDocument from './GraphQlDocument';
 import {isValidDirectiveLocation} from './type-guards';

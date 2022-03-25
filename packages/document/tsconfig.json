@@ -3,7 +3,9 @@
   "compilerOptions": {
     "lib": ["ES2020"],
     "outDir": "lib",
+    "isolatedModules": true,
     "incremental": true,
+    "composite": true,
     "rootDir": "src",
     "tsBuildInfoFile": "lib/.tsbuildinfo"
   },

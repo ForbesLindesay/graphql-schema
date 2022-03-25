@@ -12,10 +12,10 @@ export interface ITypeScriptWriter {
 }
 
 function comparePackageNames(a: string, b: string) {
-  if (a[0] === '.' && b[0] !== '.') {
+  if (a.startsWith('.') && !b.startsWith('.')) {
     return -1;
   }
-  if (a[0] !== '.' && b[0] === '.') {
+  if (!a.startsWith('.') && b.startsWith('.')) {
     return 1;
   }
   if (a > b) {
@@ -32,7 +32,7 @@ export default class TypeScriptWriter implements ITypeScriptWriter {
   private readonly _imports = new Map<string, ImportSpecifiers>();
   private readonly _declarations: string[] = [];
 
-  addImport({
+  public addImport({
     localName,
     importedName,
     packageName,
@@ -69,7 +69,9 @@ export default class TypeScriptWriter implements ITypeScriptWriter {
     specifiers.set(localName, {importedName, asType: !asValue});
   }
 
-  importsToString({typeModifiers = false}: {typeModifiers?: boolean} = {}) {
+  public importsToString({
+    typeModifiers = false,
+  }: {typeModifiers?: boolean} = {}) {
     return [...this._imports]
       .sort(([packageA], [packageB]) => comparePackageNames(packageA, packageB))
       .map(([packageName, specifiers]) => {
@@ -102,7 +104,7 @@ export default class TypeScriptWriter implements ITypeScriptWriter {
       .join(`\n`);
   }
 
-  addDeclaration(identifiers: string[], body: string) {
+  public addDeclaration(identifiers: string[], body: string) {
     // Check for local name conflicts
     for (const localName of identifiers) {
       const existingUsage = this._locals.get(localName);
@@ -118,11 +120,11 @@ export default class TypeScriptWriter implements ITypeScriptWriter {
     this._declarations.push(body);
   }
 
-  declarationsToString() {
+  public declarationsToString() {
     return this._declarations.join(`\n\n`);
   }
 
-  toString({typeModifiers = false}: {typeModifiers?: boolean} = {}) {
+  public toString({typeModifiers = false}: {typeModifiers?: boolean} = {}) {
     const imports = this.importsToString({typeModifiers});
     const declarations = this.declarationsToString();
     if (imports && declarations) {

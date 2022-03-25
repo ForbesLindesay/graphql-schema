@@ -1,6 +1,6 @@
-import Location from './Location';
-import NameNode from './NameNode';
-import ValueNode from './ValueNode';
+import type Location from './Location';
+import type NameNode from './NameNode';
+import type ValueNode from './ValueNode';
 
 export default interface ArgumentNode {
   readonly kind: 'Argument';

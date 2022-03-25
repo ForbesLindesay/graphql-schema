@@ -1,4 +1,4 @@
-import {types} from '@graphql-schema/document';
+import type {types} from '@graphql-schema/document';
 
 export interface TypeNameTypeNode {
   readonly kind: 'ClientTypeNameType';

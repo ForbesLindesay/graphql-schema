@@ -1,8 +1,8 @@
-import ArgumentNode from '../ArgumentNode';
-import DirectiveNode from '../Directives/DirectiveNode';
-import Location from '../Location';
-import NameNode from '../NameNode';
-import SelectionSetNode from './SelectionSetNode';
+import type ArgumentNode from '../ArgumentNode';
+import type DirectiveNode from '../Directives/DirectiveNode';
+import type Location from '../Location';
+import type NameNode from '../NameNode';
+import type SelectionSetNode from './SelectionSetNode';
 
 export default interface FieldNode {
   readonly kind: 'Field';

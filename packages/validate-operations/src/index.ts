@@ -1,18 +1,17 @@
-import GraphQlDocument, {
-  errors,
-  types,
-  fromDocumentNode,
-} from '@graphql-schema/document';
 import {readFileSync} from 'fs';
-import {
+import {relative} from 'path';
+
+import type {
   DocumentNode,
   GraphQLError as RawGraphQLError,
   GraphQLSchema,
-  parse as parseOperations,
-  Source,
 } from 'graphql';
+import {parse as parseOperations, Source} from 'graphql';
 import {validate} from 'graphql/validation/validate';
-import {relative} from 'path';
+
+import type {types} from '@graphql-schema/document';
+import type GraphQlDocument from '@graphql-schema/document';
+import {errors, fromDocumentNode} from '@graphql-schema/document';
 
 export interface ValidateOperationsOptions {
   schema: GraphQLSchema;
@@ -62,7 +61,9 @@ export default function validateOperations(
     return errors.throwGraphQlError(
       'GRAPH_OPERATIONS_SYNTAX_ERROR',
       ex.message,
-      {loc: getLocation(ex, {operationsString, filename: options.filename})},
+      {
+        loc: getLocation(ex, {operationsString, filename: options.filename}),
+      },
     );
   }
 

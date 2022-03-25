@@ -27,13 +27,13 @@ class FilteredDefinitions<T extends types.DefinitionNode> {
     );
   }
 
-  getMany(options?: GetManyOptions): readonly T[] {
+  public getMany(options?: GetManyOptions): readonly T[] {
     return options?.includeReferencedDocuments ? this._all : this._local;
   }
-  getOne(name: string | types.NameNode): T | undefined {
+  public getOne(name: string | types.NameNode): T | undefined {
     return this._map.get(typeof name === 'string' ? name : name.value);
   }
-  getOneX(name: types.NameNode): T {
+  public getOneX(name: types.NameNode): T {
     return (
       this.getOne(name) ??
       throwGraphQlError(
@@ -154,41 +154,43 @@ export default class GraphQlDocument {
     );
   }
 
-  getDefinitions(options?: GetManyOptions): readonly types.DefinitionNode[] {
+  public getDefinitions(
+    options?: GetManyOptions,
+  ): readonly types.DefinitionNode[] {
     return options?.includeReferencedDocuments
       ? this._allDefinitions
       : this._localDefinitions;
   }
 
-  getOperations(
+  public getOperations(
     options?: GetManyOptions,
   ): readonly types.OperationDefinitionNode[] {
     return this._operations.getMany(options);
   }
-  getOperation(
+  public getOperation(
     name: string | types.NameNode,
   ): types.OperationDefinitionNode | undefined {
     return this._operations.getOne(name);
   }
-  getOperationX(name: types.NameNode): types.OperationDefinitionNode {
+  public getOperationX(name: types.NameNode): types.OperationDefinitionNode {
     return this._operations.getOneX(name);
   }
 
-  getFragments(
+  public getFragments(
     options?: GetManyOptions,
   ): readonly types.FragmentDefinitionNode[] {
     return this._fragments.getMany(options);
   }
-  getFragment(
+  public getFragment(
     name: string | types.NameNode,
   ): types.FragmentDefinitionNode | undefined {
     return this._fragments.getOne(name);
   }
-  getFragmentX(name: types.NameNode): types.FragmentDefinitionNode {
+  public getFragmentX(name: types.NameNode): types.FragmentDefinitionNode {
     return this._fragments.getOneX(name);
   }
 
-  getInterfaceImplementations(
+  public getInterfaceImplementations(
     interfaceDefinition: types.InterfaceTypeDefinitionNode,
   ) {
     return this.getObjectTypeDefinitions({
@@ -198,128 +200,136 @@ export default class GraphQlDocument {
     );
   }
 
-  getScalarTypeDefinitions(
+  public getScalarTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.ScalarTypeDefinitionNode[] {
     return this._scalarTypeDefinitions.getMany(options);
   }
-  getScalarTypeDefinition(
+  public getScalarTypeDefinition(
     name: string | types.NameNode,
   ): types.ScalarTypeDefinitionNode | undefined {
     return this._scalarTypeDefinitions.getOne(name);
   }
-  getScalarTypeDefinitionX(
+  public getScalarTypeDefinitionX(
     name: types.NameNode,
   ): types.ScalarTypeDefinitionNode {
     return this._scalarTypeDefinitions.getOneX(name);
   }
-  getObjectTypeDefinitions(
+  public getObjectTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.ObjectTypeDefinitionNode[] {
     return this._objectTypeDefinitions.getMany(options);
   }
-  getObjectTypeDefinition(
+  public getObjectTypeDefinition(
     name: string | types.NameNode,
   ): types.ObjectTypeDefinitionNode | undefined {
     return this._objectTypeDefinitions.getOne(name);
   }
-  getObjectTypeDefinitionX(
+  public getObjectTypeDefinitionX(
     name: types.NameNode,
   ): types.ObjectTypeDefinitionNode {
     return this._objectTypeDefinitions.getOneX(name);
   }
-  getInterfaceTypeDefinitions(
+  public getInterfaceTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.InterfaceTypeDefinitionNode[] {
     return this._interfaceTypeDefinitions.getMany(options);
   }
-  getInterfaceTypeDefinition(
+  public getInterfaceTypeDefinition(
     name: string | types.NameNode,
   ): types.InterfaceTypeDefinitionNode | undefined {
     return this._interfaceTypeDefinitions.getOne(name);
   }
-  getInterfaceTypeDefinitionX(
+  public getInterfaceTypeDefinitionX(
     name: types.NameNode,
   ): types.InterfaceTypeDefinitionNode {
     return this._interfaceTypeDefinitions.getOneX(name);
   }
-  getUnionTypeDefinitions(
+  public getUnionTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.UnionTypeDefinitionNode[] {
     return this._unionTypeDefinitions.getMany(options);
   }
-  getUnionTypeDefinition(
+  public getUnionTypeDefinition(
     name: string | types.NameNode,
   ): types.UnionTypeDefinitionNode | undefined {
     return this._unionTypeDefinitions.getOne(name);
   }
-  getUnionTypeDefinitionX(name: types.NameNode): types.UnionTypeDefinitionNode {
+  public getUnionTypeDefinitionX(
+    name: types.NameNode,
+  ): types.UnionTypeDefinitionNode {
     return this._unionTypeDefinitions.getOneX(name);
   }
-  getEnumTypeDefinitions(
+  public getEnumTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.EnumTypeDefinitionNode[] {
     return this._enumTypeDefinitions.getMany(options);
   }
-  getEnumTypeDefinition(
+  public getEnumTypeDefinition(
     name: string | types.NameNode,
   ): types.EnumTypeDefinitionNode | undefined {
     return this._enumTypeDefinitions.getOne(name);
   }
-  getEnumTypeDefinitionX(name: types.NameNode): types.EnumTypeDefinitionNode {
+  public getEnumTypeDefinitionX(
+    name: types.NameNode,
+  ): types.EnumTypeDefinitionNode {
     return this._enumTypeDefinitions.getOneX(name);
   }
-  getInputObjectTypeDefinitions(
+  public getInputObjectTypeDefinitions(
     options?: GetManyOptions,
   ): readonly types.InputObjectTypeDefinitionNode[] {
     return this._inputObjectTypeDefinitions.getMany(options);
   }
-  getInputObjectTypeDefinition(
+  public getInputObjectTypeDefinition(
     name: string | types.NameNode,
   ): types.InputObjectTypeDefinitionNode | undefined {
     return this._inputObjectTypeDefinitions.getOne(name);
   }
-  getInputObjectTypeDefinitionX(
+  public getInputObjectTypeDefinitionX(
     name: types.NameNode,
   ): types.InputObjectTypeDefinitionNode {
     return this._inputObjectTypeDefinitions.getOneX(name);
   }
 
-  getTypes(options?: GetManyOptions): readonly types.TypeDefinitionNode[] {
+  public getTypes(
+    options?: GetManyOptions,
+  ): readonly types.TypeDefinitionNode[] {
     return this._types.getMany(options);
   }
-  getType(name: string | types.NameNode): types.TypeDefinitionNode | undefined {
+  public getType(
+    name: string | types.NameNode,
+  ): types.TypeDefinitionNode | undefined {
     return this._types.getOne(name);
   }
-  getTypeX(name: types.NameNode): types.TypeDefinitionNode {
+  public getTypeX(name: types.NameNode): types.TypeDefinitionNode {
     return this._types.getOneX(name);
   }
 
-  getInputTypes(
+  public getInputTypes(
     options?: GetManyOptions,
   ): readonly types.InputTypeDefinitionNode[] {
     return this._inputTypes.getMany(options);
   }
-  getInputType(
+  public getInputType(
     name: string | types.NameNode,
   ): types.InputTypeDefinitionNode | undefined {
     return this._inputTypes.getOne(name);
   }
-  getInputTypeX(name: types.NameNode): types.InputTypeDefinitionNode {
+  public getInputTypeX(name: types.NameNode): types.InputTypeDefinitionNode {
     return this._inputTypes.getOneX(name);
   }
 
-  getDirectives(
+  public getDirectives(
     options?: GetManyOptions,
   ): readonly types.DirectiveDefinitionNode[] {
     return this._directives.getMany(options);
   }
-  getDirective(
+  public getDirective(
     name: string | types.NameNode,
   ): types.DirectiveDefinitionNode | undefined {
     return this._directives.getOne(name);
   }
-  getDirectiveX(name: types.NameNode): types.DirectiveDefinitionNode {
+  public getDirectiveX(name: types.NameNode): types.DirectiveDefinitionNode {
     return this._directives.getOneX(name);
   }
 }

@@ -1,6 +1,6 @@
-import ArgumentNode from '../ArgumentNode';
-import Location from '../Location';
-import NameNode from '../NameNode';
+import type ArgumentNode from '../ArgumentNode';
+import type Location from '../Location';
+import type NameNode from '../NameNode';
 
 export default interface DirectiveNode {
   readonly kind: 'Directive';

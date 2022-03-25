@@ -2,9 +2,12 @@
   "extends": "@forbeslindesay/tsconfig",
   "compilerOptions": {
     "outDir": "lib",
+    "isolatedModules": true,
     "incremental": true,
+    "composite": true,
     "rootDir": "src",
     "tsBuildInfoFile": "lib/.tsbuildinfo"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{"path": "../document"}, {"path": "../typescript-writer"}]
 }

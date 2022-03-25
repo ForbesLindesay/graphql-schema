@@ -1,13 +1,13 @@
-import BooleanValueNode from './BooleanValueNode';
-import EnumValueNode from './EnumValueNode';
-import FloatValueNode from './FloatValueNode';
-import IntValueNode from './IntValueNode';
-import JavaScriptValueNode from './JavaScriptValueNode';
-import ListValueNode from './ListValueNode';
-import NullValueNode from './NullValueNode';
-import ObjectValueNode from './ObjectValueNode';
-import StringValueNode from './StringValueNode';
-import VariableNode from './VariableNode';
+import type BooleanValueNode from './BooleanValueNode';
+import type EnumValueNode from './EnumValueNode';
+import type FloatValueNode from './FloatValueNode';
+import type IntValueNode from './IntValueNode';
+import type JavaScriptValueNode from './JavaScriptValueNode';
+import type ListValueNode from './ListValueNode';
+import type NullValueNode from './NullValueNode';
+import type ObjectValueNode from './ObjectValueNode';
+import type StringValueNode from './StringValueNode';
+import type VariableNode from './VariableNode';
 
 type ValueNode =
   | VariableNode

@@ -1,6 +1,6 @@
-import EnumTypeDefinitionNode from './EnumTypeDefinitionNode';
-import InputObjectTypeDefinitionNode from './InputObjectTypeDefinitionNode';
-import ScalarTypeDefinitionNode from './ScalarTypeDefinition';
+import type EnumTypeDefinitionNode from './EnumTypeDefinitionNode';
+import type InputObjectTypeDefinitionNode from './InputObjectTypeDefinitionNode';
+import type ScalarTypeDefinitionNode from './ScalarTypeDefinition';
 
 type InputTypeDefinitionNode =
   | ScalarTypeDefinitionNode

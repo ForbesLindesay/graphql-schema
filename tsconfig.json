@@ -1,9 +1,23 @@
 {
   "extends": "@forbeslindesay/tsconfig",
   "compilerOptions": {
-    "outDir": "lib",
+    "isolatedModules": true,
     "esModuleInterop": true,
-    "jsx": "react"
+    "lib": ["ES2020"],
+    "noEmit": true
   },
-  "include": ["packages/*/src"]
+  "exclude": ["experiments"],
+  "references": [
+    {"path": "./packages/build-typescript-client-types"},
+    {"path": "./packages/build-typescript-declarations"},
+    {"path": "./packages/build-typescript-server-types"},
+    {"path": "./packages/client-types"},
+    {"path": "./packages/document"},
+    {"path": "./packages/federation-spec"},
+    {"path": "./packages/typescript-server"},
+    {"path": "./packages/typescript-writer"},
+    {"path": "./packages/validate-operations"},
+    {"path": "./packages/validate-schema"},
+    {"path": "./scripts"}
+  ]
 }

@@ -1,5 +1,5 @@
-import SelectionNode from '.';
-import Location from '../Location';
+import type SelectionNode from '.';
+import type Location from '../Location';
 
 export default interface SelectionSetNode {
   readonly kind: 'SelectionSet';

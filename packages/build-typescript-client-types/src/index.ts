@@ -1,12 +1,15 @@
-import GraphQlDocument, {errors, types} from '@graphql-schema/document';
+import assertNever from 'assert-never';
+
+import type {clientTypes} from '@graphql-schema/client-types';
 import {
   getResultTypeForOperation,
   getInputTypeForOperation,
-  clientTypes,
   getResultTypeForFragment,
 } from '@graphql-schema/client-types';
-import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
-import assertNever from 'assert-never';
+import type {types} from '@graphql-schema/document';
+import type GraphQlDocument from '@graphql-schema/document';
+import {errors} from '@graphql-schema/document';
+import type {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
 
 function addParentheses(enabled: boolean, str: string) {
   if (enabled) return `(${str})`;
@@ -217,7 +220,7 @@ export function buildOperationType(
     getScalarType: (type: clientTypes.ScalarTypeDefinitionNode) => string;
     getEnumType: (type: clientTypes.EnumTypeDefinitionNode) => string;
   },
-): void {
+) {
   if (!operation.name) {
     return errors.throwGraphQlError(
       `ANONYMOUS_OPERATION`,
@@ -230,8 +233,9 @@ export function buildOperationType(
   const inputFields = getInputTypeForOperation(operation, {document});
   const clientType = getResultTypeForOperation(operation, {document});
 
-  const outputName = pascalCase(operation.name.value);
-  const inputName = `${outputName}_Variables`;
+  const operationName = pascalCase(operation.name.value);
+  const inputName = `${operationName}_Variables`;
+  const outputName = `${operationName}_Result`;
   writer.addDeclaration(
     [inputName],
     [
@@ -256,7 +260,6 @@ export function buildOperationType(
     [outputName],
     [
       `export interface ${outputName} {`,
-      `  readonly __input?: (variables: ${inputName}) => void`,
       ...clientType.fields.map(
         (f) =>
           `  ${useReadonlyInputs ? `readonly ` : ``}${
@@ -287,6 +290,15 @@ export function buildOperationType(
       `}`,
     ].join(`\n`),
   );
+  return {
+    operationName,
+    inputName,
+    outputName,
+    hasInputs: inputFields.length,
+    hasRequiredInputs: inputFields.some(
+      (i) => i.type.kind !== 'ClientNullType',
+    ),
+  };
 }
 
 function pascalCase(s: string) {

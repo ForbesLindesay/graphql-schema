@@ -15,8 +15,7 @@
     "graphql": "^14.6.0"
   },
   "devDependencies": {
-    "@forbeslindesay/tsconfig": "^2.0.0",
-    "@types/node": "^13.9.1"
+    "@forbeslindesay/tsconfig": "^2.0.0"
   },
   "publishConfig": {
     "access": "public"

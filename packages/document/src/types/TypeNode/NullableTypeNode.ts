@@ -1,11 +1,11 @@
-import Location from '../Location';
-import NameNode from '../NameNode';
-import BooleanTypeNode from './BooleanTypeNode';
-import FloatTypeNode from './FloatTypeNode';
-import IdTypeNode from './IdTypeNode';
-import IntTypeNode from './IntTypeNode';
-import ListTypeNode from './ListTypeNode';
-import StringTypeNode from './StringTypeNode';
+import type Location from '../Location';
+import type NameNode from '../NameNode';
+import type BooleanTypeNode from './BooleanTypeNode';
+import type FloatTypeNode from './FloatTypeNode';
+import type IdTypeNode from './IdTypeNode';
+import type IntTypeNode from './IntTypeNode';
+import type ListTypeNode from './ListTypeNode';
+import type StringTypeNode from './StringTypeNode';
 
 export default interface NullableTypeNode {
   readonly kind: 'NullableType';

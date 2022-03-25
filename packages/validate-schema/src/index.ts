@@ -1,15 +1,19 @@
 import {readFileSync} from 'fs';
 import {relative} from 'path';
+
+import type {GraphQLSchema} from 'graphql';
+import {buildASTSchema} from 'graphql';
+import type {GraphQLError as RawGraphQLError} from 'graphql/error';
+import type {DocumentNode, DefinitionNode} from 'graphql/language';
+import {parse} from 'graphql/language';
+import {validateSDL} from 'graphql/validation/validate';
+
+import type {types} from '@graphql-schema/document';
 import GraphQlDocument, {
   errors,
   fromDocumentNode,
-  types,
 } from '@graphql-schema/document';
 import {FEDERATION_SPEC_PREFIX} from '@graphql-schema/federation-spec';
-import {GraphQLError as RawGraphQLError} from 'graphql/error';
-import {parse, DocumentNode, DefinitionNode} from 'graphql/language';
-import {validateSDL} from 'graphql/validation/validate';
-import {buildASTSchema, GraphQLSchema} from 'graphql';
 
 export interface ValidateSchemaOptions {
   isFederated?: boolean;

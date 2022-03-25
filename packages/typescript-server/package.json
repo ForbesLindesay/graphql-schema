@@ -13,7 +13,12 @@
     "assert-never": "^1.2.1",
     "graphql": "^14.6.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "funtypes": "^5.0.2"
+  },
+  "peerDependencies": {
+    "funtypes": "*"
+  },
   "publishConfig": {
     "access": "public"
   }

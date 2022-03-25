@@ -1,5 +1,6 @@
-import {types} from '@graphql-schema/document';
 import assertNever from 'assert-never';
+
+import type {types} from '@graphql-schema/document';
 
 export interface TypeScriptTypeOptions {
   /**

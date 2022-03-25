@@ -1,6 +1,6 @@
-import ValueNode from '.';
-import Location from '../Location';
-import NameNode from '../NameNode';
+import type ValueNode from '.';
+import type Location from '../Location';
+import type NameNode from '../NameNode';
 
 export default interface ObjectFieldNode {
   readonly kind: 'ObjectField';

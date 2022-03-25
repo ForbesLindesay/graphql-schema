@@ -1,5 +1,6 @@
 import {codeFrameColumns} from '@babel/code-frame';
 import assertNever from 'assert-never';
+
 import type * as types from './types';
 
 export function printGraphQlLocation(loc: types.Location): string {

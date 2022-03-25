@@ -1,5 +1,5 @@
-import FragmentDefinitionNode from './FragmentDefinitionNode';
-import OperationDefinitionNode from './OperationDefinitionNode';
+import type FragmentDefinitionNode from './FragmentDefinitionNode';
+import type OperationDefinitionNode from './OperationDefinitionNode';
 
 type ExecutableDefinitionNode =
   | OperationDefinitionNode

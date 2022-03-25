@@ -1,8 +1,8 @@
-import DirectiveNode from '../Directives/DirectiveNode';
-import Location from '../Location';
-import TypeNode from '../TypeNode';
-import ValueNode from '../ValueNode';
-import VariableNode from '../ValueNode/VariableNode';
+import type DirectiveNode from '../Directives/DirectiveNode';
+import type Location from '../Location';
+import type TypeNode from '../TypeNode';
+import type ValueNode from '../ValueNode';
+import type VariableNode from '../ValueNode/VariableNode';
 
 export default interface VariableDefinitionNode {
   readonly kind: 'VariableDefinition';

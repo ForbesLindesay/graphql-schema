@@ -1,11 +1,12 @@
-import GraphQlDocument, {types} from '@graphql-schema/document';
+import type {FieldTypeOptions} from '@graphql-schema/build-typescript-declarations';
 import {
   comment,
   getArgumentsType,
   getOutputType,
-  FieldTypeOptions,
 } from '@graphql-schema/build-typescript-declarations';
-import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
+import type {types} from '@graphql-schema/document';
+import type GraphQlDocument from '@graphql-schema/document';
+import type {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
 
 export interface ScalarResolversConfig {
   interfaceName?: string;
@@ -72,7 +73,9 @@ export function buildScalarFactory(
   for (const t of document.getScalarTypeDefinitions({
     includeReferencedDocuments: true,
   })) {
-    descriptions.push(`   ${t.name}: ${JSON.stringify(t.description ?? '')},`);
+    descriptions.push(
+      `   ${t.name.value}: ${JSON.stringify(t.description ?? '')},`,
+    );
   }
   writer.addDeclaration(
     [methodName],

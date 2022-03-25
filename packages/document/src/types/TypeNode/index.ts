@@ -1,11 +1,11 @@
-import NameNode from '../NameNode';
-import BooleanTypeNode from './BooleanTypeNode';
-import FloatTypeNode from './FloatTypeNode';
-import IdTypeNode from './IdTypeNode';
-import IntTypeNode from './IntTypeNode';
-import ListTypeNode from './ListTypeNode';
-import NullableTypeNode from './NullableTypeNode';
-import StringTypeNode from './StringTypeNode';
+import type NameNode from '../NameNode';
+import type BooleanTypeNode from './BooleanTypeNode';
+import type FloatTypeNode from './FloatTypeNode';
+import type IdTypeNode from './IdTypeNode';
+import type IntTypeNode from './IntTypeNode';
+import type ListTypeNode from './ListTypeNode';
+import type NullableTypeNode from './NullableTypeNode';
+import type StringTypeNode from './StringTypeNode';
 
 type TypeNode =
   | NameNode

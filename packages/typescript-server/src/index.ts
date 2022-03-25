@@ -1,14 +1,11 @@
-import createScalarFactory, {
+import type {
   ScalarImplementation,
   ScalarParseResult,
 } from './createScalarFactory';
+import createScalarFactory from './createScalarFactory';
 import getLiteralValue from './getLiteralValue';
-import {
-  FieldValue,
-  FieldValueWithPermission,
-  getHelpersForObject,
-  getHelpersForRootObject,
-} from './resolverUtils';
+import type {FieldValue, FieldValueWithPermission} from './resolverUtils';
+import {getHelpersForObject, getHelpersForRootObject} from './resolverUtils';
 
 export type {ScalarParseResult, ScalarImplementation};
 export {createScalarFactory};

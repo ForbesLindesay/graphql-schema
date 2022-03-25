@@ -1,5 +1,9 @@
-import GraphQlDocument, {errors, types} from '@graphql-schema/document';
 import assertNever from 'assert-never';
+
+import type {types} from '@graphql-schema/document';
+import type GraphQlDocument from '@graphql-schema/document';
+import {errors} from '@graphql-schema/document';
+
 import * as clientTypes from './types';
 
 export {clientTypes};
@@ -388,7 +392,6 @@ function getResultTypeForObject(
               {loc: selection.loc},
             );
           }
-          // TODO: validate arguments
           fields.push({
             kind: 'ClientField',
             description: fieldSource.description,
@@ -446,25 +449,14 @@ function getResultTypeForSelectionSet(
       clientTypes.OutputObjectTypeNode
     > {
   if (type.kind === 'ObjectTypeDefinition') {
-    const referencedTypeNames = getReferencedTypeNames(selectionSet, {
-      document,
-    });
-    for (const name of referencedTypeNames) {
-      if (name.value !== type.name.value) {
-        // TODO: make this error use the parent location for the fragment
-        return errors.throwGraphQlError(
-          `TYPE_CONFLICT`,
-          `The selection of ${name.value} does not match the type ${type.name.value}`,
-          {loc: name.loc},
-        );
-      }
-    }
     return getResultTypeForObject(type, selectionSet, {document});
   }
   const {referencedObjectTypes, otherObjectTypes} = groupObjectTypes(
     type,
     selectionSet,
-    {document},
+    {
+      document,
+    },
   );
   const resultTypes: clientTypes.OutputObjectTypeNode[] = [];
 

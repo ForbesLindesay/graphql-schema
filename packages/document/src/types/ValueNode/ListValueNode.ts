@@ -1,5 +1,5 @@
-import Location from '../Location';
-import ValueNode from '.';
+import type ValueNode from '.';
+import type Location from '../Location';
 
 export default interface ListValueNode {
   readonly kind: 'ListValue';

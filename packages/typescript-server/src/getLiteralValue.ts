@@ -1,4 +1,4 @@
-import {ValueNode} from 'graphql';
+import type {ValueNode} from 'graphql';
 
 export default function getLiteralValue(
   literal: ValueNode,

@@ -11,16 +11,15 @@
   },
   "dependencies": {
     "@babel/code-frame": "^7.8.3",
-    "@graphql-schema/client-types": "0.0.0",
-    "@graphql-schema/document": "0.0.0",
+    "@graphql-schema/client-types": "^0.0.0",
+    "@graphql-schema/document": "^0.0.0",
     "assert-never": "^1.2.1",
-    "chalk": "^3.0.0",
+    "chalk": "^4.0.0",
     "graphql": "^14.6.0"
   },
   "devDependencies": {
     "@forbeslindesay/tsconfig": "^2.0.0",
     "@types/babel__code-frame": "^7.0.1",
-    "@types/node": "^13.9.1",
     "strip-ansi": "^6.0.0"
   },
   "publishConfig": {

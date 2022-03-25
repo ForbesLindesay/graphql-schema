@@ -1,4 +1,4 @@
-import LocationSource from './LocationSource';
+import type LocationSource from './LocationSource';
 
 interface LocationRange {
   readonly kind: 'LocationRange';

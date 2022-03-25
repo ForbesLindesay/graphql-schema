@@ -1,5 +1,7 @@
-import GraphQlDocument, {types} from '@graphql-schema/document';
-import {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
+import type {types} from '@graphql-schema/document';
+import type GraphQlDocument from '@graphql-schema/document';
+import type {ITypeScriptWriter} from '@graphql-schema/typescript-writer';
+
 import getTypeScriptType from './graphQLTypeToTypeScript';
 
 export enum EnumMode {
