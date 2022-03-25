@@ -1,3 +1,5 @@
+import {relative} from 'path';
+
 import {codeFrameColumns} from '@babel/code-frame';
 import assertNever from 'assert-never';
 
@@ -6,7 +8,7 @@ import type * as types from './types';
 export function printGraphQlLocation(loc: types.Location): string {
   switch (loc.kind) {
     case 'FileLocationSource':
-      return loc.filename;
+      return relative(process.cwd(), loc.filename);
     case 'SchemaLocationSource':
       return 'GraphQL Schema';
     case 'StringLocationSource':
@@ -17,7 +19,7 @@ export function printGraphQlLocation(loc: types.Location): string {
         case 'FileLocationSource': {
           const l = indexToLineAndColumn(loc.source.source, loc.start);
           if (!l) return printGraphQlLocation(loc.source);
-          return `${printGraphQlLocation(loc.source)}(${l.line}:${l.column})`;
+          return `${printGraphQlLocation(loc.source)} (${l.line}:${l.column})`;
         }
         default:
           return printGraphQlLocation(loc.source);

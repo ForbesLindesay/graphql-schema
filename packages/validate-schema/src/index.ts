@@ -40,7 +40,7 @@ export function validateSchemaFile(
     if (ex.code === 'ENOENT') {
       return errors.throwGraphQlError(
         'ENOENT',
-        `Could not find the schema at ${filename}`,
+        `Could not find the schema at ${relative(process.cwd(), filename)}`,
         {
           loc: {kind: 'FileLocationSource', filename, source: ``},
         },
